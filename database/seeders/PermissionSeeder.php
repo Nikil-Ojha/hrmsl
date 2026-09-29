@@ -517,7 +517,7 @@ class PermissionSeeder extends Seeder
             ['name' => 'manage-own-candidates', 'module' => 'candidates', 'label' => 'Manage Own Candidates', 'description' => 'Manage Limited Candidates that is created by own'],
             ['name' => 'view-candidates', 'module' => 'candidates', 'label' => 'View Candidates', 'description' => 'View Candidates'],
             ['name' => 'convert-to-employee', 'module' => 'candidates', 'label' => 'Convert to Employee', 'description' => 'Convert Candidate to Employee'],
-            // Need to Remove ['name' => 'create-candidates', 'module' => 'candidates', 'label' => 'Create Candidates', 'description' => 'Can create candidates'],
+            ['name' => 'create-candidates', 'module' => 'candidates', 'label' => 'Create Candidates', 'description' => 'Can create candidates'],
             ['name' => 'edit-candidates', 'module' => 'candidates', 'label' => 'Edit Candidates', 'description' => 'Can edit candidates'],
             ['name' => 'delete-candidates', 'module' => 'candidates', 'label' => 'Delete Candidates', 'description' => 'Can delete candidates'],
 

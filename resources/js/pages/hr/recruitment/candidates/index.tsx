@@ -17,7 +17,7 @@ export default function Candidates() {
   const { t } = useTranslation();
   const { auth, candidates, jobPostings, sources, employees, filters: pageFilters = {}, globalSettings, statusCounts = {} } = usePage().props as any;
   const permissions = auth?.permissions || [];
-
+console.log(permissions);
   const [searchTerm, setSearchTerm] = useState(pageFilters.search || '');
   const [statusFilter, setStatusFilter] = useState(pageFilters.status || '_empty_');
   const [jobFilter, setJobFilter] = useState(pageFilters.job_id || '_empty_');
@@ -92,10 +92,10 @@ export default function Candidates() {
       case 'view':
         router.get(route('hr.recruitment.candidates.show', item.id));
         break;
-      // Need to Remove - case 'edit':
-      //   setFormMode('edit');
-      //   setIsFormModalOpen(true);
-      //   break;
+      case 'edit':
+        setFormMode('edit');
+        setIsFormModalOpen(true);
+        break;
       case 'delete':
         setIsDeleteModalOpen(true);
         break;
@@ -134,59 +134,59 @@ export default function Candidates() {
     }
   };
 
-  // Need to Remove - const handleAddNew = () => {
-  //   setCurrentItem(null);
-  //   setFormMode('create');
-  //   setIsFormModalOpen(true);
-  // };
+  const handleAddNew = () => {
+    setCurrentItem(null);
+    setFormMode('create');
+    setIsFormModalOpen(true);
+  };
 
-  // Need to Remove - const handleFormSubmit = (formData: any) => {
-  //   if (formMode === 'create') {
-  //     toast.loading(t('Creating candidate...'));
+  const handleFormSubmit = (formData: any) => {
+    if (formMode === 'create') {
+      toast.loading(t('Creating candidate...'));
 
-  //     router.post(route('hr.recruitment.candidates.store'), formData, {
-  //       onSuccess: (page) => {
-  //         setIsFormModalOpen(false);
-  //         toast.dismiss();
-  //         if (page.props.flash.success) {
-  //           toast.success(t(page.props.flash.success));
-  //         } else if (page.props.flash.error) {
-  //           toast.error(t(page.props.flash.error));
-  //         }
-  //       },
-  //       onError: (errors) => {
-  //         toast.dismiss();
-  //         if (typeof errors === 'string') {
-  //           toast.error(t(errors));
-  //         } else {
-  //           toast.error(t('Failed to create candidate: {{errors}}', { errors: Object.values(errors).join(', ') }));
-  //         }
-  //       }
-  //     });
-  //   } else if (formMode === 'edit') {
-  //     toast.loading(t('Updating candidate...'));
+      router.post(route('hr.recruitment.candidates.store'), formData, {
+        onSuccess: (page) => {
+          setIsFormModalOpen(false);
+          toast.dismiss();
+          if (page.props.flash.success) {
+            toast.success(t(page.props.flash.success));
+          } else if (page.props.flash.error) {
+            toast.error(t(page.props.flash.error));
+          }
+        },
+        onError: (errors) => {
+          toast.dismiss();
+          if (typeof errors === 'string') {
+            toast.error(t(errors));
+          } else {
+            toast.error(t('Failed to create candidate: {{errors}}', { errors: Object.values(errors).join(', ') }));
+          }
+        }
+      });
+    } else if (formMode === 'edit') {
+      toast.loading(t('Updating candidate...'));
 
-  //     router.put(route('hr.recruitment.candidates.update', currentItem.id), formData, {
-  //       onSuccess: (page) => {
-  //         setIsFormModalOpen(false);
-  //         toast.dismiss();
-  //         if (page.props.flash.success) {
-  //           toast.success(t(page.props.flash.success));
-  //         } else if (page.props.flash.error) {
-  //           toast.error(t(page.props.flash.error));
-  //         }
-  //       },
-  //       onError: (errors) => {
-  //         toast.dismiss();
-  //         if (typeof errors === 'string') {
-  //           toast.error(t(errors));
-  //         } else {
-  //           toast.error(t('Failed to update candidate: {{errors}}', { errors: Object.values(errors).join(', ') }));
-  //         }
-  //       }
-  //     });
-  //   }
-  // };
+      router.put(route('hr.recruitment.candidates.update', currentItem.id), formData, {
+        onSuccess: (page) => {
+          setIsFormModalOpen(false);
+          toast.dismiss();
+          if (page.props.flash.success) {
+            toast.success(t(page.props.flash.success));
+          } else if (page.props.flash.error) {
+            toast.error(t(page.props.flash.error));
+          }
+        },
+        onError: (errors) => {
+          toast.dismiss();
+          if (typeof errors === 'string') {
+            toast.error(t(errors));
+          } else {
+            toast.error(t('Failed to update candidate: {{errors}}', { errors: Object.values(errors).join(', ') }));
+          }
+        }
+      });
+    }
+  };
 
   const handleDeleteConfirm = () => {
     toast.loading(t('Deleting candidate...'));
@@ -251,14 +251,14 @@ export default function Candidates() {
     }
   ];
 
-  // Need to Remove - if (hasPermission(permissions, 'create-candidates')) {
-  //   pageActions.push({
-  //     label: t('Add Candidate'),
-  //     icon: <Plus className="h-4 w-4 mr-2" />,
-  //     variant: 'default',
-  //     onClick: () => handleAddNew()
-  //   });
-  // }
+  if (hasPermission(permissions, 'create-candidates')) {
+    pageActions.push({
+      label: t('Add Candidate'),
+      icon: <Plus className="h-4 w-4 mr-2" />,
+      variant: 'default' as const,
+      onClick: () => handleAddNew()
+    });
+  }
 
   const breadcrumbs = [
     { title: t('Dashboard'), href: route('dashboard') },
@@ -358,13 +358,13 @@ export default function Candidates() {
       className: 'text-blue-500',
       requiredPermission: 'view-candidates'
     },
-    // Need to Remove - {
-    //   label: t('Edit'),
-    //   icon: 'Edit',
-    //   action: 'edit',
-    //   className: 'text-amber-500',
-    //   requiredPermission: 'edit-candidates'
-    // },
+    {
+      label: t('Edit'),
+      icon: 'Edit',
+      action: 'edit',
+      className: 'text-amber-500',
+      requiredPermission: 'edit-candidates'
+    },
     {
       label: t('Update Status'),
       icon: 'RefreshCw',
@@ -543,8 +543,7 @@ export default function Candidates() {
         />
       </div>
 
-      {/* Need to Remove - Form Modal */}
-      {/* <CrudFormModal
+      <CrudFormModal
         isOpen={isFormModalOpen}
         onClose={() => setIsFormModalOpen(false)}
         onSubmit={handleFormSubmit}
@@ -669,7 +668,7 @@ export default function Candidates() {
               : t('View Candidate')
         }
         mode={formMode}
-      /> */}
+      />
 
       <CrudDeleteModal
         isOpen={isDeleteModalOpen}

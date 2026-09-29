@@ -362,7 +362,7 @@ class RoleSeeder extends Seeder
             'manage-own-candidates',
             'view-candidates',
             'convert-to-employee',
-            // 'create-candidates',
+            'create-candidates',
             'edit-candidates',
             'delete-candidates',
             'manage-interview-types',

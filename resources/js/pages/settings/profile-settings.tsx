@@ -313,9 +313,9 @@ export default function ProfileSettings({ mustVerifyEmail, status }: { mustVerif
                       className="mt-1 block w-full"
                       value={profileData.email}
                       onChange={(e) => setProfileData(prev => ({ ...prev, email: e.target.value }))}
-                      required
                       autoComplete="username"
                       placeholder={t("Email address")}
+                      disabled
                     />
                     <InputError className="mt-2" message={profileErrors.email} />
                   </div>

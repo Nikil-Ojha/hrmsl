@@ -10,6 +10,7 @@ use App\Models\Designation;
 use App\Models\DocumentType;
 use App\Models\Employee;
 use App\Models\EmployeeDocument;
+use App\Models\Offer;
 use App\Models\ExperienceCertificateTemplate;
 use App\Models\JoiningLetterTemplate;
 use App\Models\NocTemplate;
@@ -217,6 +218,7 @@ class EmployeeController extends Controller
             try {
                 // Validate basic information
                 $validator = Validator::make($request->all(), [
+                    'candidate_id' => 'nullable|exists:candidates,id',
                     'name' => 'required|string|max:255',
                     'biometric_emp_id' => 'nullable|string|max:255|unique:employees,biometric_emp_id',
                     'email' => 'required|email|max:255|unique:users,email',
@@ -285,6 +287,19 @@ class EmployeeController extends Controller
 
                 if ($validator->fails()) {
                     return redirect()->back()->withErrors($validator)->withInput();
+                }
+
+                // Candidate conversions must satisfy the same hiring rules as the conversion page.
+                $candidate = null;
+                if ($request->filled('candidate_id')) {
+                    $candidate = Candidate::findOrFail($request->candidate_id);
+                    if (!Auth::user()->can('convert-to-employee')
+                        || !in_array($candidate->created_by, getCompanyAndUsersId())
+                        || $candidate->status !== 'Hired'
+                        || $candidate->is_employee
+                        || !Offer::where('candidate_id', $candidate->id)->where('status', 'Accepted')->exists()) {
+                        return redirect()->back()->with('error', __('This candidate is not eligible for conversion'))->withInput();
+                    }
                 }
 
                 \DB::beginTransaction();
@@ -396,11 +411,8 @@ class EmployeeController extends Controller
                 }
 
                 // Check if this is a candidate conversion
-                if ($request->has('candidate_id')) {
-                    $candidate = Candidate::find($request->candidate_id);
-                    if ($candidate) {
-                        $candidate->update(['is_employee' => true]);
-                    }
+                if ($candidate) {
+                    $candidate->update(['is_employee' => true]);
 
                     \DB::commit();
                     return redirect()->route('hr.recruitment.candidates.index')->with('success', __('Candidate converted to employee successfully'));

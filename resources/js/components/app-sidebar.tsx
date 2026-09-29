@@ -122,14 +122,14 @@ export function AppSidebar() {
         if (hasPermission(permissions, 'manage-departments')) orgChildren.push({ title: t('Departments'), href: route('hr.departments.index') });
         if (hasPermission(permissions, 'manage-designations')) orgChildren.push({ title: t('Designations'), href: route('hr.designations.index') });
         if (hasPermission(permissions, 'manage-holidays')) orgChildren.push({ title: t('Holidays'), href: route('hr.holidays.index') });
-        if (hasPermission(permissions, 'manage-announcements')) orgChildren.push({ title: t('Announcements'), href: route('hr.announcements.index') });
-        if (hasPermission(permissions, 'manage-award-types')) orgChildren.push({ title: t('Award Types'), href: route('hr.award-types.index') });
+        // if (hasPermission(permissions, 'manage-announcements')) orgChildren.push({ title: t('Announcements'), href: route('hr.announcements.index') });
+        // if (hasPermission(permissions, 'manage-award-types')) orgChildren.push({ title: t('Award Types'), href: route('hr.award-types.index') });
         if (hasPermission(permissions, 'manage-document-types')) orgChildren.push({ title: t('Document Types'), href: route('hr.document-types.index') });
-        if (orgChildren.length > 0) items.push({ title: t('Organization Structure'), icon: Building2, children: orgChildren, group: t('Workforce Management') });
+        if (orgChildren.length > 0) items.push({ title: t('Organization'), icon: Building2, children: orgChildren, group: t('Workforce Management') });
 
         const attendanceChildren: any[] = [];
         if (hasPermission(permissions, 'manage-attendance-records')) attendanceChildren.push({ title: t('Attendance Records'), href: route('hr.attendance-records.index') });
-        if (hasPermission(permissions, 'manage-time-entries')) attendanceChildren.push({ title: t('Timesheet'), href: route('hr.time-entries.index') });
+        // if (hasPermission(permissions, 'manage-time-entries')) attendanceChildren.push({ title: t('Timesheet'), href: route('hr.time-entries.index') });
         if (hasPermission(permissions, 'manage-biometric-attendance')) attendanceChildren.push({ title: t('Biometric Attendance'), href: route('hr.biometric-attendance.index') });
         if (hasPermission(permissions, 'manage-attendance-regularizations')) attendanceChildren.push({ title: t('Attendance Regularizations'), href: route('hr.attendance-regularizations.index') });
         if (hasPermission(permissions, 'manage-shifts')) attendanceChildren.push({ title: t('Shifts'), href: route('hr.shifts.index') });
@@ -148,102 +148,102 @@ export function AppSidebar() {
 
         // Daily Use / Core Flow
         if (hasPermission(permissions, 'manage-job-postings')) recruitmentChildren.push({ title: t('Job Postings'), href: route('hr.recruitment.job-postings.index') });
+        if (hasPermission(permissions, 'manage-candidate-sources')) recruitmentChildren.push({ title: t('Candidate Sources'), href: route('hr.recruitment.candidate-sources.index') });
         if (hasPermission(permissions, 'manage-candidates')) recruitmentChildren.push({ title: t('Candidates'), href: route('hr.recruitment.candidates.index') });
-        if (hasPermission(permissions, 'manage-interviews')) recruitmentChildren.push({ title: t('Interviews'), href: route('hr.recruitment.interviews.index') });
+        // if (hasPermission(permissions, 'manage-interviews')) recruitmentChildren.push({ title: t('Interviews'), href: route('hr.recruitment.interviews.index') });
         // if (hasPermission(permissions, 'manage-interview-feedback')) recruitmentChildren.push({ title: t('Interview Feedback'), href: route('hr.recruitment.interview-feedback.index') });
         if (hasPermission(permissions, 'manage-offers')) recruitmentChildren.push({ title: t('Offers'), href: route('hr.recruitment.offers.index') });
         if (hasPermission(permissions, 'manage-candidate-onboarding')) recruitmentChildren.push({ title: t('Candidate Onboarding'), href: route('hr.recruitment.candidate-onboarding.index') });
 
         // Supporting Workflow
-        if (hasPermission(permissions, 'manage-candidate-assessments')) recruitmentChildren.push({ title: t('Candidate Assessments'), href: route('hr.recruitment.candidate-assessments.index') });
-        if (hasPermission(permissions, 'manage-onboarding-checklists')) recruitmentChildren.push({ title: t('Onboarding Checklists'), href: route('hr.recruitment.onboarding-checklists.index') });
-        if (hasPermission(permissions, 'manage-checklist-items')) recruitmentChildren.push({ title: t('Checklist Items'), href: route('hr.recruitment.checklist-items.index') });
-        if (hasPermission(permissions, 'manage-career-page') && companySlug) recruitmentChildren.push({ title: t('Career'), href: route('career.index', companySlug), target: '_blank' });
+        // if (hasPermission(permissions, 'manage-candidate-assessments')) recruitmentChildren.push({ title: t('Candidate Assessments'), href: route('hr.recruitment.candidate-assessments.index') });
+        // if (hasPermission(permissions, 'manage-onboarding-checklists')) recruitmentChildren.push({ title: t('Onboarding Checklists'), href: route('hr.recruitment.onboarding-checklists.index') });
+        // if (hasPermission(permissions, 'manage-checklist-items')) recruitmentChildren.push({ title: t('Checklist Items'), href: route('hr.recruitment.checklist-items.index') });
+        // if (hasPermission(permissions, 'manage-career-page') && companySlug) recruitmentChildren.push({ title: t('Career'), href: route('career.index', companySlug), target: '_blank' });
 
         // Setup / Configuration
         if (hasPermission(permissions, 'manage-job-categories')) recruitmentChildren.push({ title: t('Job Categories'), href: route('hr.recruitment.job-categories.index') });
         if (hasPermission(permissions, 'manage-job-types')) recruitmentChildren.push({ title: t('Job Types'), href: route('hr.recruitment.job-types.index') });
         if (hasPermission(permissions, 'manage-job-locations')) recruitmentChildren.push({ title: t('Job Locations'), href: route('hr.recruitment.job-locations.index') });
-        if (hasPermission(permissions, 'manage-candidate-sources')) recruitmentChildren.push({ title: t('Candidate Sources'), href: route('hr.recruitment.candidate-sources.index') });
-        if (hasPermission(permissions, 'manage-interview-types')) recruitmentChildren.push({ title: t('Interview Types'), href: route('hr.recruitment.interview-types.index') });
-        if (hasPermission(permissions, 'manage-interview-rounds')) recruitmentChildren.push({ title: t('Interview Rounds'), href: route('hr.recruitment.interview-rounds.index') });
-        if (hasPermission(permissions, 'manage-offer-templates')) recruitmentChildren.push({ title: t('Offer Templates'), href: route('hr.recruitment.offer-templates.index') });
-        if (hasPermission(permissions, 'manage-custom-questions')) recruitmentChildren.push({ title: t('Custom Questions'), href: route('hr.recruitment.custom-questions.index') });
+        // if (hasPermission(permissions, 'manage-interview-types')) recruitmentChildren.push({ title: t('Interview Types'), href: route('hr.recruitment.interview-types.index') });
+        // if (hasPermission(permissions, 'manage-interview-rounds')) recruitmentChildren.push({ title: t('Interview Rounds'), href: route('hr.recruitment.interview-rounds.index') });
+        // if (hasPermission(permissions, 'manage-offer-templates')) recruitmentChildren.push({ title: t('Offer Templates'), href: route('hr.recruitment.offer-templates.index') });
+        // if (hasPermission(permissions, 'manage-custom-questions')) recruitmentChildren.push({ title: t('Custom Questions'), href: route('hr.recruitment.custom-questions.index') });
 
         if (recruitmentChildren.length > 0) items.push({ title: t('Recruitment'), icon: UserPlus, children: recruitmentChildren, group: t('Talent & Growth') });
 
         const lifecycleChildren: any[] = [];
-        if (hasPermission(permissions, 'manage-awards')) lifecycleChildren.push({ title: t('Awards'), href: route('hr.awards.index') });
-        if (hasPermission(permissions, 'manage-promotions')) lifecycleChildren.push({ title: t('Promotions'), href: route('hr.promotions.index') });
-        if (hasPermission(permissions, 'manage-employee-transfers')) lifecycleChildren.push({ title: t('Transfers'), href: route('hr.transfers.index') });
-        if (hasPermission(permissions, 'manage-warnings')) lifecycleChildren.push({ title: t('Warnings'), href: route('hr.warnings.index') });
-        if (hasPermission(permissions, 'manage-resignations')) lifecycleChildren.push({ title: t('Resignations'), href: route('hr.resignations.index') });
-        if (hasPermission(permissions, 'manage-terminations')) lifecycleChildren.push({ title: t('Terminations'), href: route('hr.terminations.index') });
-        if (hasPermission(permissions, 'manage-trips')) lifecycleChildren.push({ title: t('Trips'), href: route('hr.trips.index') });
-        if (hasPermission(permissions, 'manage-complaints')) lifecycleChildren.push({ title: t('Complaints'), href: route('hr.complaints.index') });
-        if (lifecycleChildren.length > 0) items.push({ title: t('Employee Lifecycle'), icon: RefreshCw, children: lifecycleChildren, group: t('Talent & Growth') });
+        // if (hasPermission(permissions, 'manage-awards')) lifecycleChildren.push({ title: t('Awards'), href: route('hr.awards.index') });
+        // if (hasPermission(permissions, 'manage-promotions')) lifecycleChildren.push({ title: t('Promotions'), href: route('hr.promotions.index') });
+        // if (hasPermission(permissions, 'manage-employee-transfers')) lifecycleChildren.push({ title: t('Transfers'), href: route('hr.transfers.index') });
+        // if (hasPermission(permissions, 'manage-warnings')) lifecycleChildren.push({ title: t('Warnings'), href: route('hr.warnings.index') });
+        // if (hasPermission(permissions, 'manage-resignations')) lifecycleChildren.push({ title: t('Resignations'), href: route('hr.resignations.index') });
+        // if (hasPermission(permissions, 'manage-terminations')) lifecycleChildren.push({ title: t('Terminations'), href: route('hr.terminations.index') });
+        // if (hasPermission(permissions, 'manage-trips')) lifecycleChildren.push({ title: t('Trips'), href: route('hr.trips.index') });
+        // if (hasPermission(permissions, 'manage-complaints')) lifecycleChildren.push({ title: t('Complaints'), href: route('hr.complaints.index') });
+        // if (lifecycleChildren.length > 0) items.push({ title: t('Employee Lifecycle'), icon: RefreshCw, children: lifecycleChildren, group: t('Talent & Growth') });
 
         const performanceChildren: any[] = [];
-        if (hasPermission(permissions, 'manage-employee-reviews')) performanceChildren.push({ title: t('Employee Reviews'), href: route('hr.performance.employee-reviews.index') });
-        if (hasPermission(permissions, 'manage-employee-goals')) performanceChildren.push({ title: t('Employee Goals'), href: route('hr.performance.employee-goals.index') });
-        if (hasPermission(permissions, 'manage-review-cycles')) performanceChildren.push({ title: t('Review Cycles'), href: route('hr.performance.review-cycles.index') });
-        if (hasPermission(permissions, 'manage-performance-indicators')) performanceChildren.push({ title: t('Indicators'), href: route('hr.performance.indicators.index') });
-        if (hasPermission(permissions, 'manage-goal-types')) performanceChildren.push({ title: t('Goal Types'), href: route('hr.performance.goal-types.index') });
-        if (hasPermission(permissions, 'manage-performance-indicator-categories')) performanceChildren.push({ title: t('Indicator Categories'), href: route('hr.performance.indicator-categories.index') });
-        if (performanceChildren.length > 0) items.push({ title: t('Performance Management'), icon: BarChart2, children: performanceChildren, group: t('Talent & Growth') });
+        // if (hasPermission(permissions, 'manage-employee-reviews')) performanceChildren.push({ title: t('Employee Reviews'), href: route('hr.performance.employee-reviews.index') });
+        // if (hasPermission(permissions, 'manage-employee-goals')) performanceChildren.push({ title: t('Employee Goals'), href: route('hr.performance.employee-goals.index') });
+        // if (hasPermission(permissions, 'manage-review-cycles')) performanceChildren.push({ title: t('Review Cycles'), href: route('hr.performance.review-cycles.index') });
+        // if (hasPermission(permissions, 'manage-performance-indicators')) performanceChildren.push({ title: t('Indicators'), href: route('hr.performance.indicators.index') });
+        // if (hasPermission(permissions, 'manage-goal-types')) performanceChildren.push({ title: t('Goal Types'), href: route('hr.performance.goal-types.index') });
+        // if (hasPermission(permissions, 'manage-performance-indicator-categories')) performanceChildren.push({ title: t('Indicator Categories'), href: route('hr.performance.indicator-categories.index') });
+        // if (performanceChildren.length > 0) items.push({ title: t('Performance Management'), icon: BarChart2, children: performanceChildren, group: t('Talent & Growth') });
 
         const trainingChildren: any[] = [];
-        // Daily Use / Core Flow
-        if (hasPermission(permissions, 'manage-employee-trainings')) trainingChildren.push({ title: t('Employee Trainings'), href: route('hr.employee-trainings.index') });
-        if (hasPermission(permissions, 'manage-training-sessions')) trainingChildren.push({ title: t('Training Sessions'), href: route('hr.training-sessions.index') });
-        if (hasPermission(permissions, 'manage-training-programs')) trainingChildren.push({ title: t('Training Programs'), href: route('hr.training-programs.index') });
-        // Supporting Workflow
-        if (hasPermission(permissions, 'manage-training-assessments')) trainingChildren.push({ title: t('Training Assessments'), href: route('hr.training-assessments.index') });
-        // Setup / Configuration
-        if (hasPermission(permissions, 'manage-training-types')) trainingChildren.push({ title: t('Training Types'), href: route('hr.training-types.index') });
-        if (trainingChildren.length > 0) items.push({ title: t('Training & Development'), icon: BookOpen, children: trainingChildren, group: t('Talent & Growth') });
+        // // Daily Use / Core Flow
+        // if (hasPermission(permissions, 'manage-employee-trainings')) trainingChildren.push({ title: t('Employee Trainings'), href: route('hr.employee-trainings.index') });
+        // if (hasPermission(permissions, 'manage-training-sessions')) trainingChildren.push({ title: t('Training Sessions'), href: route('hr.training-sessions.index') });
+        // if (hasPermission(permissions, 'manage-training-programs')) trainingChildren.push({ title: t('Training Programs'), href: route('hr.training-programs.index') });
+        // // Supporting Workflow
+        // if (hasPermission(permissions, 'manage-training-assessments')) trainingChildren.push({ title: t('Training Assessments'), href: route('hr.training-assessments.index') });
+        // // Setup / Configuration
+        // if (hasPermission(permissions, 'manage-training-types')) trainingChildren.push({ title: t('Training Types'), href: route('hr.training-types.index') });
+        // if (trainingChildren.length > 0) items.push({ title: t('Training & Development'), icon: BookOpen, children: trainingChildren, group: t('Talent & Growth') });
 
         // ── 4. FINANCE & ASSETS ──────────────────────────────────────────────
         const payrollChildren: any[] = [];
-        if (hasPermission(permissions, 'manage-payslips')) payrollChildren.push({ title: t('Payslips'), href: route('hr.payslips.index') });
-        if (hasPermission(permissions, 'manage-payroll-runs')) payrollChildren.push({ title: t('Payroll Runs'), href: route('hr.payroll-runs.index') });
-        if (hasPermission(permissions, 'manage-employee-salaries')) payrollChildren.push({ title: t('Employee Salaries'), href: route('hr.employee-salaries.index') });
-        if (hasPermission(permissions, 'manage-salary-components')) payrollChildren.push({ title: t('Salary Components'), href: route('hr.salary-components.index') });
-        if (payrollChildren.length > 0) items.push({ title: t('Payroll Management'), icon: DollarSign, children: payrollChildren, group: t('Finance & Assets') });
+        // if (hasPermission(permissions, 'manage-payslips')) payrollChildren.push({ title: t('Payslips'), href: route('hr.payslips.index') });
+        // if (hasPermission(permissions, 'manage-payroll-runs')) payrollChildren.push({ title: t('Payroll Runs'), href: route('hr.payroll-runs.index') });
+        // if (hasPermission(permissions, 'manage-employee-salaries')) payrollChildren.push({ title: t('Employee Salaries'), href: route('hr.employee-salaries.index') });
+        // if (hasPermission(permissions, 'manage-salary-components')) payrollChildren.push({ title: t('Salary Components'), href: route('hr.salary-components.index') });
+        // if (payrollChildren.length > 0) items.push({ title: t('Payroll Management'), icon: DollarSign, children: payrollChildren, group: t('Finance & Assets') });
 
         const assetChildren: any[] = [];
-        if (hasPermission(permissions, 'manage-assets')) assetChildren.push({ title: t('Dashboard'), href: route('hr.assets.dashboard') });
-        if (hasPermission(permissions, 'manage-assets')) assetChildren.push({ title: t('Assets'), href: route('hr.assets.index') });
-        if (hasPermission(permissions, 'manage-assets')) assetChildren.push({ title: t('Depreciation'), href: route('hr.assets.depreciation-report') });
-        if (hasPermission(permissions, 'manage-asset-types')) assetChildren.push({ title: t('Asset Types'), href: route('hr.asset-types.index') });
-        if (assetChildren.length > 0) items.push({ title: t('Asset Management'), icon: Package, children: assetChildren, group: t('Finance & Assets') });
+        // if (hasPermission(permissions, 'manage-assets')) assetChildren.push({ title: t('Dashboard'), href: route('hr.assets.dashboard') });
+        // if (hasPermission(permissions, 'manage-assets')) assetChildren.push({ title: t('Assets'), href: route('hr.assets.index') });
+        // if (hasPermission(permissions, 'manage-assets')) assetChildren.push({ title: t('Depreciation'), href: route('hr.assets.depreciation-report') });
+        // if (hasPermission(permissions, 'manage-asset-types')) assetChildren.push({ title: t('Asset Types'), href: route('hr.asset-types.index') });
+        // if (assetChildren.length > 0) items.push({ title: t('Asset Management'), icon: Package, children: assetChildren, group: t('Finance & Assets') });
 
         // ── 5. COMMUNICATIONS & CONTENT ──────────────────────────────────────
         // Daily Use / Core Flow
         const meetingChildren: any[] = [];
-        if (hasPermission(permissions, 'manage-meetings')) meetingChildren.push({ title: t('Meetings'), href: route('meetings.meetings.index') });
+        // if (hasPermission(permissions, 'manage-meetings')) meetingChildren.push({ title: t('Meetings'), href: route('meetings.meetings.index') });
         // if (hasPermission(permissions, 'manage-meeting-attendees')) meetingChildren.push({ title: t('Meeting Attendees'), href: route('meetings.meeting-attendees.index') });
         // if (hasPermission(permissions, 'manage-meeting-minutes')) meetingChildren.push({ title: t('Meeting Minutes'), href: route('meetings.meeting-minutes.index') });
-        if (hasPermission(permissions, 'manage-action-items')) meetingChildren.push({ title: t('Action Items'), href: route('meetings.action-items.index') });
+        // if (hasPermission(permissions, 'manage-action-items')) meetingChildren.push({ title: t('Action Items'), href: route('meetings.action-items.index') });
         // Setup / Configuration
-        if (hasPermission(permissions, 'manage-meeting-types')) meetingChildren.push({ title: t('Meeting Types'), href: route('meetings.meeting-types.index') });
-        if (hasPermission(permissions, 'manage-meeting-rooms')) meetingChildren.push({ title: t('Meeting Rooms'), href: route('meetings.meeting-rooms.index') });
-        if (meetingChildren.length > 0) items.push({ title: t('Meetings'), icon: Calendar, children: meetingChildren, group: t('Communications & Content') });
+        // if (hasPermission(permissions, 'manage-meeting-types')) meetingChildren.push({ title: t('Meeting Types'), href: route('meetings.meeting-types.index') });
+        // if (hasPermission(permissions, 'manage-meeting-rooms')) meetingChildren.push({ title: t('Meeting Rooms'), href: route('meetings.meeting-rooms.index') });
+        // if (meetingChildren.length > 0) items.push({ title: t('Meetings'), icon: Calendar, children: meetingChildren, group: t('Communications & Content') });
 
         const docsContractsChildren: any[] = [];
         // Daily Use / Core Flow
-        if (hasPermission(permissions, 'manage-hr-documents')) docsContractsChildren.push({ title: t('HR Documents'), href: route('hr.documents.hr-documents.index') });
-        if (hasPermission(permissions, 'manage-employee-contracts')) docsContractsChildren.push({ title: t('Employee Contracts'), href: route('hr.contracts.employee-contracts.index') });
-        if (hasPermission(permissions, 'manage-document-acknowledgments')) docsContractsChildren.push({ title: t('Acknowledgments'), href: route('hr.documents.document-acknowledgments.index') });
+        // if (hasPermission(permissions, 'manage-hr-documents')) docsContractsChildren.push({ title: t('HR Documents'), href: route('hr.documents.hr-documents.index') });
+        // if (hasPermission(permissions, 'manage-employee-contracts')) docsContractsChildren.push({ title: t('Employee Contracts'), href: route('hr.contracts.employee-contracts.index') });
+        // if (hasPermission(permissions, 'manage-document-acknowledgments')) docsContractsChildren.push({ title: t('Acknowledgments'), href: route('hr.documents.document-acknowledgments.index') });
         // Templates & Generation
-        if (hasPermission(permissions, 'manage-contract-templates')) docsContractsChildren.push({ title: t('Contract Templates'), href: route('hr.contracts.contract-templates.index') });
-        if (hasPermission(permissions, 'manage-document-templates')) docsContractsChildren.push({ title: t('Document Templates'), href: route('hr.documents.document-templates.index') });
+        // if (hasPermission(permissions, 'manage-contract-templates')) docsContractsChildren.push({ title: t('Contract Templates'), href: route('hr.contracts.contract-templates.index') });
+        // if (hasPermission(permissions, 'manage-document-templates')) docsContractsChildren.push({ title: t('Document Templates'), href: route('hr.documents.document-templates.index') });
         // Setup / Configuration
-        if (hasPermission(permissions, 'manage-contract-types')) docsContractsChildren.push({ title: t('Contract Types'), href: route('hr.contracts.contract-types.index') });
-        if (hasPermission(permissions, 'manage-document-categories')) docsContractsChildren.push({ title: t('Document Categories'), href: route('hr.documents.document-categories.index') });
-        if (docsContractsChildren.length > 0) items.push({ title: t('Documents & Contracts'), icon: FileText, children: docsContractsChildren, group: t('Communications & Content') });
+        // if (hasPermission(permissions, 'manage-contract-types')) docsContractsChildren.push({ title: t('Contract Types'), href: route('hr.contracts.contract-types.index') });
+        // if (hasPermission(permissions, 'manage-document-categories')) docsContractsChildren.push({ title: t('Document Categories'), href: route('hr.documents.document-categories.index') });
+        // if (docsContractsChildren.length > 0) items.push({ title: t('Documents & Contracts'), icon: FileText, children: docsContractsChildren, group: t('Communications & Content') });
 
-        if (hasPermission(permissions, 'manage-media')) items.push({ title: t('Media Library'), href: route('media-library'), icon: Image, group: t('Communications & Content') });
+        // if (hasPermission(permissions, 'manage-media')) items.push({ title: t('Media Library'), href: route('media-library'), icon: Image, group: t('Communications & Content') });
 
         return items;
     };

@@ -431,9 +431,17 @@ class CandidateController extends Controller
                 return redirect()->back()->with('error', 'Permission denied');
             }
 
-            if ($candidate->status !== 'Hired' || $candidate->is_employee) {
-                return redirect()->back()->with('error', 'Invalid candidate status for conversion');
-            }
+                if ($candidate->status !== 'Hired' || $candidate->is_employee) {
+                    return redirect()->back()->with('error', 'Invalid candidate status for conversion');
+                }
+
+                if (!Auth::user()->can('convert-to-employee')) {
+                    return redirect()->back()->with('error', __('Permission Denied.'));
+                }
+
+                if (!Offer::where('candidate_id', $candidate->id)->where('status', 'Accepted')->exists()) {
+                    return redirect()->back()->with('error', __('Candidate must have an accepted offer before conversion to employee'));
+                }
 
             // Create User
             $user = \App\Models\User::create([

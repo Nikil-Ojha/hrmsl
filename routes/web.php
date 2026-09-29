@@ -766,8 +766,8 @@ Route::middleware(['auth', 'verified', 'setting'])->group(function () {
             Route::get('hr/recruitment/candidates', [CandidateController::class, 'index'])->name('hr.recruitment.candidates.index');
             Route::get('hr/recruitment/candidates/kanban', [CandidateController::class, 'kanban'])->name('hr.recruitment.candidates.kanban');
             Route::get('hr/recruitment/candidates/{candidate}', [CandidateController::class, 'show'])->middleware('permission:view-candidates')->name('hr.recruitment.candidates.show');
-            // Route::post('hr/recruitment/candidates', [CandidateController::class, 'store'])->middleware('permission:create-candidates')->name('hr.recruitment.candidates.store');
-            // Route::put('hr/recruitment/candidates/{candidate}', [CandidateController::class, 'update'])->middleware('permission:edit-candidates')->name('hr.recruitment.candidates.update');
+            Route::post('hr/recruitment/candidates', [CandidateController::class, 'store'])->middleware('permission:create-candidates')->name('hr.recruitment.candidates.store');
+            Route::put('hr/recruitment/candidates/{candidate}', [CandidateController::class, 'update'])->middleware('permission:edit-candidates')->name('hr.recruitment.candidates.update');
             Route::delete('hr/recruitment/candidates/{candidate}', [CandidateController::class, 'destroy'])->middleware('permission:delete-candidates')->name('hr.recruitment.candidates.destroy');
             Route::put('hr/recruitment/candidates/{candidate}/status', [CandidateController::class, 'updateStatus'])->middleware('permission:edit-candidates')->name('hr.recruitment.candidates.update-status');
 

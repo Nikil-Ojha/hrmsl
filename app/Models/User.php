@@ -484,204 +484,204 @@ class User extends BaseAuthenticatable implements MustVerifyEmail
             'download-media',
 
             // Media Directory
-            'manage-media-directories',
-            'manage-any-media-directories',
-            'create-media-directories',
-            'edit-media-directories',
-            'delete-media-directories',
+            // 'manage-media-directories',
+            // 'manage-any-media-directories',
+            // 'create-media-directories',
+            // 'edit-media-directories',
+            // 'delete-media-directories',
 
             // Employee permissions
-            'manage-employees',
-            'manage-own-employees',
-            'view-employees',
+            // 'manage-employees',
+            // 'manage-own-employees',
+            // 'view-employees',
 
             // Award permissions
-            'manage-awards',
-            'manage-own-awards',
-            'view-awards',
+            // 'manage-awards',
+            // 'manage-own-awards',
+            // 'view-awards',
 
             // Promotion permissions
-            'manage-promotions',
-            'manage-own-promotions',
+            // 'manage-promotions',
+            // 'manage-own-promotions',
             'view-promotions',
 
             // Resignation permissions
-            'manage-resignations',
-            'view-resignations',
-            'manage-own-resignations',
+            // 'manage-resignations',
+            // 'view-resignations',
+            // 'manage-own-resignations',
             'create-resignations',
-            'edit-resignations',
-            'delete-resignations',
+            // 'edit-resignations',
+            // 'delete-resignations',
 
             // Termination permissions
-            'manage-terminations',
-            'manage-own-terminations',
-            'view-terminations',
+            // 'manage-terminations',
+            // 'manage-own-terminations',
+            // 'view-terminations',
 
             // Warning permissions
-            'manage-warnings',
+            // 'manage-warnings',
             'manage-own-warnings',
             'view-warnings',
 
             // Trip permissions
-            'manage-trips',
-            'manage-own-trips',
-            'view-trips',
+            // 'manage-trips',
+            // 'manage-own-trips',
+            // 'view-trips',
 
             // Complaint permissions
-            'manage-complaints',
-            'manage-own-complaints',
-            'view-complaints',
-            'create-complaints',
-            'edit-complaints',
-            'delete-complaints',
+            // 'manage-complaints',
+            // 'manage-own-complaints',
+            // 'view-complaints',
+            // 'create-complaints',
+            // 'edit-complaints',
+            // 'delete-complaints',
 
             // Employee Transfer permissions
-            'manage-employee-transfers',
-            'manage-own-employee-transfers',
-            'view-employee-transfers',
+            // 'manage-employee-transfers',
+            // 'manage-own-employee-transfers',
+            // 'view-employee-transfers',
 
             // Holiday permissions
-            'manage-holidays',
-            'manage-any-holidays',
+            // 'manage-holidays',
+            // 'manage-any-holidays',
             'view-holidays',
 
             // Announcement permissions
-            'manage-announcements',
-            'manage-any-announcements',
+            // 'manage-announcements',
+            // 'manage-any-announcements',
             'view-announcements',
 
             // Asset Type permissions
-            'manage-asset-types',
-            'manage-any-asset-types',
-            'view-asset-types',
+            // 'manage-asset-types',
+            // 'manage-any-asset-types',
+            // 'view-asset-types',
 
             // Asset permissions
-            'manage-assets',
+            // 'manage-assets',
             'view-assets',
 
             // Training Program permissions
-            'manage-training-programs',
-            'manage-any-training-programs',
-            'view-training-programs',
+            // 'manage-training-programs',
+            // 'manage-any-training-programs',
+            // 'view-training-programs',
 
             // Training Session permissions
-            'manage-training-sessions',
-            'manage-own-training-sessions',
-            'view-training-sessions',
-            'manage-attendance',
+            // 'manage-training-sessions',
+            // 'manage-own-training-sessions',
+            // 'view-training-sessions',
+            // 'manage-attendance',
 
             // Employee Training permissions
-            'manage-employee-trainings',
-            'manage-own-employee-trainings',
-            'view-employee-trainings',
-            'assign-trainings',
-            'manage-assessments',
-            'record-assessment-results',
+            // 'manage-employee-trainings',
+            // 'manage-own-employee-trainings',
+            // 'view-employee-trainings',
+            // 'assign-trainings',
+            // 'manage-assessments',
+            // 'record-assessment-results',
 
             // Performance Indicators
-            'manage-performance-indicators',
+            // 'manage-performance-indicators',
             'manage-own-performance-indicators',
             'view-performance-indicators',
 
             // Employee Goals
-            'manage-employee-goals',
-            'manage-own-employee-goals',
-            'view-employee-goals',
+            // 'manage-employee-goals',
+            // 'manage-own-employee-goals',
+            // 'view-employee-goals',
 
             // Review Cycles
-            'manage-review-cycles',
-            'manage-own-review-cycles',
-            'view-review-cycles',
+            // 'manage-review-cycles',
+            // 'manage-own-review-cycles',
+            // 'view-review-cycles',
 
             // Employee Reviews
-            'manage-employee-reviews',
-            'manage-own-employee-reviews',
-            'view-employee-reviews',
+            // 'manage-employee-reviews',
+            // 'manage-own-employee-reviews',
+            // 'view-employee-reviews',
 
             // Job Locations management
-            'manage-job-locations',
-            'manage-any-job-locations',
-            'view-job-locations',
+            // 'manage-job-locations',
+            // 'manage-any-job-locations',
+            // 'view-job-locations',
 
             // Job Postings management
-            'manage-job-postings',
-            'manage-any-job-postings',
-            'view-job-postings',
+            // 'manage-job-postings',
+            // 'manage-any-job-postings',
+            // 'view-job-postings',
 
             // Interview Rounds management
-            'manage-interview-rounds',
-            'manage-any-interview-rounds',
-            'view-interview-rounds',
+            // 'manage-interview-rounds',
+            // 'manage-any-interview-rounds',
+            // 'view-interview-rounds',
 
             // Interviews management
-            'manage-interviews',
-            'manage-own-interviews',
-            'view-interviews',
+            // 'manage-interviews',
+            // 'manage-own-interviews',
+            // 'view-interviews',
 
             // Interview Feedback management
-            'manage-interview-feedback',
-            'manage-own-interview-feedback',
-            'view-interview-feedback',
-            'create-interview-feedback',
-            'edit-interview-feedback',
-            'delete-interview-feedback',
+            // 'manage-interview-feedback',
+            // 'manage-own-interview-feedback',
+            // 'view-interview-feedback',
+            // 'create-interview-feedback',
+            // 'edit-interview-feedback',
+            // 'delete-interview-feedback',
 
             // Candidate Assessments management
-            'manage-candidate-assessments',
-            'manage-own-candidate-assessments',
-            'view-candidate-assessments',
-            'create-candidate-assessments',
-            'edit-candidate-assessments',
-            'delete-candidate-assessments',
+            // 'manage-candidate-assessments',
+            // 'manage-own-candidate-assessments',
+            // 'view-candidate-assessments',
+            // 'create-candidate-assessments',
+            // 'edit-candidate-assessments',
+            // 'delete-candidate-assessments',
 
             // Candidate Onboarding management
-            'manage-candidate-onboarding',
-            'manage-own-candidate-onboarding',
-            'view-candidate-onboarding',
+            // 'manage-candidate-onboarding',
+            // 'manage-own-candidate-onboarding',
+            // 'view-candidate-onboarding',
 
             // Meetings management
-            'manage-meetings',
-            'manage-own-meetings',
-            'view-meetings',
+            // 'manage-meetings',
+            // 'manage-own-meetings',
+            // 'view-meetings',
 
             // Meeting Attendees management
-            'manage-meeting-attendees',
-            'manage-any-meeting-attendees',
-            'view-meeting-attendees',
-            'edit-meeting-attendees',
+            // 'manage-meeting-attendees',
+            // 'manage-any-meeting-attendees',
+            // 'view-meeting-attendees',
+            // 'edit-meeting-attendees',
 
             // Meeting Minutes management
-            'manage-meeting-minutes',
-            'manage-own-meeting-minutes',
-            'view-meeting-minutes',
+            // 'manage-meeting-minutes',
+            // 'manage-own-meeting-minutes',
+            // 'view-meeting-minutes',
 
             // Action Items management
-            'manage-action-items',
-            'manage-own-action-items',
-            'view-action-items',
+            // 'manage-action-items',
+            // 'manage-own-action-items',
+            // 'view-action-items',
 
             // Employee Contracts management
-            'manage-employee-contracts',
-            'manage-own-employee-contracts',
-            'view-employee-contracts',
+            // 'manage-employee-contracts',
+            // 'manage-own-employee-contracts',
+            // 'view-employee-contracts',
 
             // HR Documents management
-            'manage-hr-documents',
-            'manage-any-hr-documents',
-            'view-hr-documents',
+            // 'manage-hr-documents',
+            // 'manage-any-hr-documents',
+            // 'view-hr-documents',
 
             // Document Acknowledgments management
-            'manage-document-acknowledgments',
-            'manage-own-document-acknowledgments',
-            'view-document-acknowledgments',
+            // 'manage-document-acknowledgments',
+            // 'manage-own-document-acknowledgments',
+            // 'view-document-acknowledgments',
 
             // Leave Policies management
-            'manage-leave-policies',
-            'manage-any-leave-policies',
+            // 'manage-leave-policies',
+            // 'manage-any-leave-policies',
 
             // Leave Applications management
-            'manage-leave-applications',
+            // 'manage-leave-applications',
             'manage-own-leave-applications',
             'view-leave-applications',
             'create-leave-applications',
@@ -691,49 +691,49 @@ class User extends BaseAuthenticatable implements MustVerifyEmail
             // Leave Balances management
             'manage-leave-balances',
             'manage-own-leave-balances',
-            'view-leave-balances',
+            // 'view-leave-balances',
 
             // Shifts management
-            'manage-shifts',
-            'manage-any-shifts',
+            // 'manage-shifts',
+            // 'manage-any-shifts',
             'view-shifts',
 
             // Attendance Policies management
-            'manage-attendance-policies',
-            'manage-any-attendance-policies',
+            // 'manage-attendance-policies',
+            // 'manage-any-attendance-policies',
             'view-attendance-policies',
 
             // Attendance Records management
-            'manage-attendance-records',
-            'manage-own-attendance-records',
+            // 'manage-attendance-records',
+            // 'manage-own-attendance-records',
             'view-attendance-records',
-            'create-attendance-records',
-            'edit-attendance-records',
-            'delete-attendance-records',
-            'clock-in-out',
+            // 'create-attendance-records',
+            // 'edit-attendance-records',
+            // 'delete-attendance-records',
+            // 'clock-in-out',
 
             // Attendance Regularizations management
-            'manage-attendance-regularizations',
-            'manage-own-attendance-regularizations',
+            // 'manage-attendance-regularizations',
+            // 'manage-own-attendance-regularizations',
             'view-attendance-regularizations',
             'create-attendance-regularizations',
             'edit-attendance-regularizations',
             'delete-attendance-regularizations',
 
             // Time Entries management
-            'manage-time-entries',
-            'manage-own-time-entries',
+            // 'manage-time-entries',
+            // 'manage-own-time-entries',
             'view-time-entries',
             'create-time-entries',
             'edit-time-entries',
 
             // Employee Salaries management
-            'manage-employee-salaries',
-            'manage-own-employee-salaries',
-            'view-employee-salaries',
+            // 'manage-employee-salaries',
+            // 'manage-own-employee-salaries',
+            // 'view-employee-salaries',
 
             // Payslips management
-            'manage-payslips',
+            // 'manage-payslips',
             'manage-own-payslips',
             'download-payslips',
         ];

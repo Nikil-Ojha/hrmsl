@@ -1029,7 +1029,7 @@ export function AppSidebar() {
                                     />
                                 ) : (
                                     <div className="h-12 text-inherit font-semibold flex items-center text-lg tracking-tight">
-                                        WorkDo
+                                        H R M
                                     </div>
                                 );
                             })()}

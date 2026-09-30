@@ -35,7 +35,7 @@ export function ThemePreview() {
   
   // Get title text
   const getTitleText = () => {
-    return 'WorkDo';
+    return 'H R M';
   };
   
   return (

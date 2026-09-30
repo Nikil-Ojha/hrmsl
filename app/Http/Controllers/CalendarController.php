@@ -6,6 +6,7 @@ use App\Models\Holiday;
 use App\Models\LeaveApplication;
 use App\Models\Meeting;
 use App\Models\Employee;
+use App\Models\CalendarEvent;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -27,6 +28,33 @@ class CalendarController extends Controller
         }
 
         $companyUserIds = getCompanyAndUsersId();
+
+        $customEvents = CalendarEvent::query()
+            ->whereIn('created_by', $companyUserIds)
+            ->where(function ($query) use ($user) {
+                $query->where('visibility', 'public')
+                    ->orWhere(function ($privateQuery) use ($user) {
+                        $privateQuery->where('visibility', 'private')
+                            ->where('created_by', $user->id);
+                    });
+            })
+            ->get()
+            ->map(function (CalendarEvent $event) {
+                return [
+                    'id' => 'custom_' . $event->id,
+                    'title' => $event->title,
+                    'description' => $event->description,
+                    'start' => $event->start_date->toDateString(),
+                    // FullCalendar treats an all-day event's end as exclusive.
+                    'end' => $event->end_date->copy()->addDay()->toDateString(),
+                    'type' => 'custom',
+                    'visibility' => $event->visibility,
+                    'allDay' => true,
+                    'backgroundColor' => '#ede9fe',
+                    'borderColor' => 'rgba(124, 58, 237, 0.2)',
+                    'textColor' => '#6d28d9',
+                ];
+            });
 
         if (isDemo()) {
             // Static data for demo mode - 12 months
@@ -246,11 +274,33 @@ class CalendarController extends Controller
                 ];
             });
 
-        $events = $meetings->concat($holidays)->concat($leaves)->concat($birthdays);
+        $events = $meetings->concat($holidays)->concat($leaves)->concat($birthdays)->concat($customEvents);
 
         return Inertia::render('calendar/index', [
             'events' => $events,
             'canManage' => $user->hasPermissionTo('manage-calendar'),
+            'canCreateEvents' => $user->hasPermissionTo('view-calendar'),
         ]);
+    }
+
+    public function storeEvent(Request $request)
+    {
+        $user = $request->user();
+        abort_unless($user->hasPermissionTo('view-calendar'), 403, 'Unauthorized');
+
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:5000'],
+            'start_date' => ['required', 'date_format:Y-m-d'],
+            'end_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:start_date'],
+            'visibility' => ['required', 'in:public,private'],
+        ]);
+
+        CalendarEvent::create([
+            ...$validated,
+            'created_by' => $user->id,
+        ]);
+
+        return redirect()->route('calendar.index')->with('success', __('Calendar event created successfully.'));
     }
 }

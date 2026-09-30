@@ -5418,6 +5418,7 @@
     "Emergency contact name is required": "Emergency contact name is required",
     "Emergency contact phone is required": "Emergency contact phone is required",
     "Employee code is required": "Employee code is required",
+    "Employee code must be 4 to 9 digits": "Employee code must be 4 to 9 digits",
     "Employee status is required": "Employee status is required",
     "Employees on leave today": "Employees on leave today",
     "Employment type is required": "Employment type is required",

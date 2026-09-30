@@ -78,6 +78,7 @@ export default function ConvertToEmployee() {
     : designations;
 
   const handleChange = (name: string, value: any) => {
+    if (name === 'biometric_emp_id') value = String(value).replace(/\D/g, '').slice(0, 9);
     setFormData(prev => ({ ...prev, [name]: value }));
 
     // Clear error when field is changed
@@ -172,6 +173,7 @@ export default function ConvertToEmployee() {
     if (s === 0) {
       if (!formData.name)             e.name = t('Full name is required');
       if (!formData.biometric_emp_id) e.biometric_emp_id = t('Employee code is required');
+      else if (!/^[0-9]{4,9}$/.test(formData.biometric_emp_id)) e.biometric_emp_id = t('Employee code must be 4 to 9 digits');
       if (!profileImage)              e.profile_image = t('Profile image is required');
       if (!formData.email)            e.email = t('Email is required');
       if (!formData.password)         e.password = t('Password is required');
@@ -395,10 +397,14 @@ export default function ConvertToEmployee() {
                 <Label htmlFor="biometric_emp_id" required>{t('Employee Code')}</Label>
                 <Input
                   id="biometric_emp_id"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]{4,9}"
+                  maxLength={9}
                   required
                   value={formData.biometric_emp_id || ''}
                   onChange={(e) => handleChange('biometric_emp_id', e.target.value)}
-                  placeholder={t('e.g. EMP001')}
+                  placeholder="1000"
                   className={errors.biometric_emp_id ? 'border-red-500' : ''}
                 />
                 {errors.biometric_emp_id && <p className="text-red-500 text-xs">{errors.biometric_emp_id}</p>}

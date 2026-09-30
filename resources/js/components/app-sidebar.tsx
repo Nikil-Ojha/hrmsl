@@ -131,7 +131,7 @@ export function AppSidebar() {
         if (hasPermission(permissions, 'manage-attendance-records')) attendanceChildren.push({ title: t('Attendance Records'), href: route('hr.attendance-records.index') });
         // if (hasPermission(permissions, 'manage-time-entries')) attendanceChildren.push({ title: t('Timesheet'), href: route('hr.time-entries.index') });
         if (hasPermission(permissions, 'manage-biometric-attendance')) attendanceChildren.push({ title: t('Biometric Attendance'), href: route('hr.biometric-attendance.index') });
-        if (hasPermission(permissions, 'manage-attendance-regularizations')) attendanceChildren.push({ title: t('Attendance Regularizations'), href: route('hr.attendance-regularizations.index') });
+        if (hasPermission(permissions, 'manage-attendance-regularizations')) attendanceChildren.push({ title: t('Attendance Tickets'), href: route('hr.attendance-regularizations.index') });
         if (hasPermission(permissions, 'manage-shifts')) attendanceChildren.push({ title: t('Shifts'), href: route('hr.shifts.index') });
         if (hasPermission(permissions, 'manage-attendance-policies')) attendanceChildren.push({ title: t('Attendance Policies'), href: route('hr.attendance-policies.index') });
         if (attendanceChildren.length > 0) items.push({ title: t('Attendance'), icon: Clock, children: attendanceChildren, group: t('Workforce Management') });

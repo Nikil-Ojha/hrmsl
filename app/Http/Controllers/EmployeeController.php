@@ -220,7 +220,7 @@ class EmployeeController extends Controller
                 $validator = Validator::make($request->all(), [
                     'candidate_id' => 'nullable|exists:candidates,id',
                     'name' => 'required|string|max:255',
-                    'biometric_emp_id' => 'nullable|string|max:255|unique:employees,biometric_emp_id',
+                    'biometric_emp_id' => 'required|regex:/^[0-9]{4,9}$/|unique:employees,biometric_emp_id',
                     'email' => 'required|email|max:255|unique:users,email',
                     'password' => 'required|string|min:8',
                     'phone' => 'required|string|max:20',
@@ -542,7 +542,7 @@ class EmployeeController extends Controller
                 // Validate basic information
                 $validator = Validator::make($request->all(), [
                     'name' => 'required|string|max:255',
-                    'biometric_emp_id' => 'nullable|string|max:255|unique:employees,biometric_emp_id,' . $employee->id,
+                    'biometric_emp_id' => 'required|regex:/^[0-9]{4,9}$/|unique:employees,biometric_emp_id,' . $employee->id,
                     'email' => 'required|email|max:255|unique:users,email,' . $employee->user_id,
                     'password' => 'nullable|string|min:8',
                     'phone' => 'required|string|max:20',
@@ -1389,7 +1389,13 @@ class EmployeeController extends Controller
 
                 foreach ($data as $row) {
                     try {
-                        if (empty($row['name']) || empty($row['email'])) {
+                        if (empty($row['name']) || empty($row['email']) || empty($row['biometric_emp_id']) || !preg_match('/^[0-9]{4,9}$/', (string) $row['biometric_emp_id'])) {
+                            $skipped++;
+
+                            continue;
+                        }
+
+                        if (Employee::where('biometric_emp_id', $row['biometric_emp_id'])->exists()) {
                             $skipped++;
 
                             continue;

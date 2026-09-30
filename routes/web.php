@@ -1292,6 +1292,7 @@ Route::middleware(['auth', 'verified', 'setting'])->group(function () {
         // Calendar routes
         Route::middleware('permission:view-calendar')->group(function () {
             Route::get('calendar', [CalendarController::class, 'index'])->name('calendar.index');
+            Route::post('calendar/events', [CalendarController::class, 'storeEvent'])->name('calendar.events.store');
         });
 
         // Login History routes

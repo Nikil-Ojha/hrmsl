@@ -395,6 +395,7 @@ class CandidateController extends Controller
             $validator = Validator::make($request->all(), [
                 'candidate_id' => 'required|exists:candidates,id',
                 'name' => 'required|string|max:255',
+                'biometric_emp_id' => 'required|regex:/^[0-9]{4,9}$/|unique:employees,biometric_emp_id',
                 'email' => 'required|email|max:255|unique:users,email',
                 'password' => 'required|string|min:8',
                 'phone' => 'required|string|max:20',

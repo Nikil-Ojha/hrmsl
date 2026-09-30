@@ -28,6 +28,7 @@ interface Language {
 }
 
 export function LanguageSwitcher() {
+    return'';
     const { i18n, t } = useTranslation();
     const { auth, globalSettings, userLanguage } = usePage().props as any;
     const { setPosition } = useLayout();

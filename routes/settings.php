@@ -18,6 +18,7 @@ use App\Http\Controllers\IpRestrictionController;
 use App\Http\Controllers\JoiningLetterTemplateController;
 use App\Http\Controllers\NocTemplateController;
 use App\Http\Controllers\Settings\WorkingDaysSettingController;
+use App\Http\Controllers\Settings\LeaveYearSettingController;
 use App\Http\Controllers\ZektoSettingsController;
 use Inertia\Inertia;
 
@@ -82,6 +83,7 @@ Route::middleware(['auth', 'verified', 'plan.access'])->group(function () {
     // Working Days Settings routes
     Route::get('settings/working-days/get', [WorkingDaysSettingController::class, 'getWorkingDaysSettings'])->name('settings.working-days.get');
     Route::post('settings/working-days/update', [WorkingDaysSettingController::class, 'updateWorkingDaysSettings'])->name('settings.working-days.update');
+    Route::post('settings/leave-year/update', [LeaveYearSettingController::class, 'update'])->name('settings.leave-year.update');
 
     // Webhook Settings routes
     Route::get('settings/webhooks', [WebhookController::class, 'index'])->name('settings.webhooks.index');

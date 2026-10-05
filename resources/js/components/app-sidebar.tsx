@@ -205,11 +205,11 @@ export function AppSidebar() {
 
         // ── 4. FINANCE & ASSETS ──────────────────────────────────────────────
         const payrollChildren: any[] = [];
-        // if (hasPermission(permissions, 'manage-payslips')) payrollChildren.push({ title: t('Payslips'), href: route('hr.payslips.index') });
-        // if (hasPermission(permissions, 'manage-payroll-runs')) payrollChildren.push({ title: t('Payroll Runs'), href: route('hr.payroll-runs.index') });
-        // if (hasPermission(permissions, 'manage-employee-salaries')) payrollChildren.push({ title: t('Employee Salaries'), href: route('hr.employee-salaries.index') });
-        // if (hasPermission(permissions, 'manage-salary-components')) payrollChildren.push({ title: t('Salary Components'), href: route('hr.salary-components.index') });
-        // if (payrollChildren.length > 0) items.push({ title: t('Payroll Management'), icon: DollarSign, children: payrollChildren, group: t('Finance & Assets') });
+        if (hasPermission(permissions, 'manage-payslips')) payrollChildren.push({ title: t('Payslips'), href: route('hr.payslips.index') });
+        if (hasPermission(permissions, 'manage-payroll-runs')) payrollChildren.push({ title: t('Payroll Runs'), href: route('hr.payroll-runs.index') });
+        if (hasPermission(permissions, 'manage-employee-salaries')) payrollChildren.push({ title: t('Employee Salaries'), href: route('hr.employee-salaries.index') });
+        if (hasPermission(permissions, 'manage-salary-components')) payrollChildren.push({ title: t('Salary Components'), href: route('hr.salary-components.index') });
+        if (payrollChildren.length > 0) items.push({ title: t('Payroll Management'), icon: DollarSign, children: payrollChildren, group: t('Finance & Assets') });
 
         const assetChildren: any[] = [];
         // if (hasPermission(permissions, 'manage-assets')) assetChildren.push({ title: t('Dashboard'), href: route('hr.assets.dashboard') });
@@ -285,7 +285,7 @@ export function AppSidebar() {
         }
 
         // 19. Settings
-        if (hasPermission(permissions, 'manage-settings')) {
+        if (hasPermission(permissions, 'manage-settings') || hasPermission(permissions, 'manage-leave-policies')) {
             items.push({ title: t('Settings'), href: route('settings'), icon: Settings, group: t('System Control') });
         }
 

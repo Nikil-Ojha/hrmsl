@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\LeavePolicy;
 use App\Models\LeaveType;
+use App\Services\LeaveYearCycle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -73,6 +74,7 @@ class LeavePolicyController extends Controller
 
             return Inertia::render('hr/leave-policies/index', [
                 'leavePolicies' => $leavePolicies,
+                'leaveYearCycle' => LeaveYearCycle::description(),
                 'leaveTypes'    => $leaveTypes,
                 'statusCounts'  => $statusCounts,
                 'filters'       => $request->all(['search', 'leave_type_id', 'status', 'sort_field', 'sort_direction', 'per_page']),

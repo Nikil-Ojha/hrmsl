@@ -51,7 +51,7 @@ export default function View({ leavePolicy }: ViewLeavePolicyProps) {
                     <div>
                         <label className="text-sm font-medium text-gray-500 flex items-center gap-2">
                             <ArrowUpDown className="h-4 w-4" />
-                            {t('Carry Forward Limit')}
+                            {t('Carry Forward Limit per Leave Year')}
                         </label>
                         <p className="mt-1 text-sm font-medium text-gray-900 font-mono">{leavePolicy.carry_forward_limit} {t('days')}</p>
                     </div>

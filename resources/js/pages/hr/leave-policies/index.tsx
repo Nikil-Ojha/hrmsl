@@ -16,7 +16,7 @@ import View from './view';
 
 export default function LeavePolicies() {
   const { t } = useTranslation();
-  const { auth, leavePolicies, leaveTypes, filters: pageFilters = {}, globalSettings, statusCounts = {} } = usePage().props as any;
+  const { auth, leavePolicies, leaveTypes, leaveYearCycle, filters: pageFilters = {}, globalSettings, statusCounts = {} } = usePage().props as any;
   const permissions = auth?.permissions || [];
 
   // State
@@ -273,6 +273,11 @@ export default function LeavePolicies() {
         </div>
       )
     },
+    {
+      key: 'leave_year_cycle',
+      label: t('Leave Year Cycle'),
+      render: () => <span className="text-sm">{leaveYearCycle || t('Calendar Year (January–December)')}</span>,
+    },
     // {
     //   key: 'accrual_rate',
     //   label: t('Accrual'),
@@ -475,7 +480,7 @@ export default function LeavePolicies() {
                 label: type.name
               })) : []
             },
-            { name: 'carry_forward_limit', label: t('Carry Forward Limit (Days)'), type: 'number', required: true, min: 0, placeholder: t('e.g. 10') },
+            { name: 'carry_forward_limit', label: t('Carry Forward Limit per Leave Year (Days)'), type: 'number', required: true, min: 0, placeholder: t('e.g. 10') },
             { name: 'min_days_per_application', label: t('Min Days Per Application'), type: 'number', required: true, min: 1, placeholder: t('e.g. 1') },
             { name: 'max_days_per_application', label: t('Max Days Per Application'), type: 'number', required: true, min: 1, placeholder: t('e.g. 14') },
             { name: 'requires_approval', label: t('Requires Approval'), type: 'checkbox', defaultValue: true },

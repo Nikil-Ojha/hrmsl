@@ -125,7 +125,7 @@ class LeaveApplication extends BaseModel
      */
     public function updateLeaveBalance()
     {
-        $currentYear = now()->year;
+        $currentYear = \App\Services\LeaveYearCycle::startYear($this->start_date);
 
         // Find existing balance — auto-created by ensureYearBalances() on page load
         // Fallback: create if somehow missing (e.g. first-ever application before page visit)

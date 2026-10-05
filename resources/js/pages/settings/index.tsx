@@ -22,6 +22,7 @@ import CacheSettings from './components/cache-settings';
 import WebhookSettings from './components/webhook-settings';
 import GoogleCalendarSettings from './components/google-calendar-settings';
 import WorkingDaysSettings from './components/working-days-settings';
+import LeaveYearSettings from './components/leave-year-settings';
 import ZektoSettings from './components/zekto-settings';
 import IpRestrictionSettings from './components/ip-restriction-settings';
 import NocSettings from './components/noc-settings';
@@ -39,6 +40,10 @@ export default function Settings() {
 
   const { systemSettings = {}, cacheSize = '0.00', timezones = {}, dateFormats = {}, timeFormats = {}, paymentSettings = {}, webhooks = [], auth = {}, globalSettings = {}, zektoSettings = {}, nocTemplates = [], joiningLetterTemplates = [], experienceCertificateTemplates = [], languages = [] } = usePage().props as any;
   const isSaas = globalSettings?.is_saas;
+  console.log(auth.user,"NIKIL");
+  const canManageLeaveYear = auth.user?.type === 'company'
+    || auth.permissions?.includes('manage-system-settings')
+    || auth.permissions?.includes('manage-leave-policies');
   const [activeSection, setActiveSection] = useState('system-settings');
 
   // Define all possible sidebar navigation items
@@ -72,6 +77,12 @@ export default function Settings() {
       href: '#working-days-settings',
       icon: <Clock className="h-4 w-4 mr-2" />,
       permission: 'manage-working-days-settings'
+    },
+    {
+      title: t('Leave Year Settings'),
+      href: '#leave-year-settings',
+      icon: <Calendar className="h-4 w-4 mr-2" />,
+      permission: 'manage-system-settings'
     },
     {
       title: t('IP Restriction Settings'),
@@ -163,6 +174,10 @@ export default function Settings() {
   // }
   // Filter sidebar items based on user permissions
   const sidebarNavItems = allSidebarNavItems.filter(item => {
+    // Leave year controls organization-wide policy and balance periods.
+    if (item.href === '#leave-year-settings') {
+      return canManageLeaveYear;
+    }
     // Exclude Working Days Settings from superadmin
     if (item.permission === 'manage-working-days-settings' && auth.user?.type === 'superadmin') {
       return false;
@@ -207,6 +222,7 @@ export default function Settings() {
 
   const currencySettingsRef = useRef<HTMLDivElement>(null);
   const workingDaysSettingsRef = useRef<HTMLDivElement>(null);
+  const leaveYearSettingsRef = useRef<HTMLDivElement>(null);
   const emailSettingsRef = useRef<HTMLDivElement>(null);
   const paymentSettingsRef = useRef<HTMLDivElement>(null);
   const storageSettingsRef = useRef<HTMLDivElement>(null);
@@ -236,6 +252,7 @@ export default function Settings() {
 
       const currencySettingsPosition = currencySettingsRef.current?.offsetTop || 0;
       const workingDaysSettingsPosition = workingDaysSettingsRef.current?.offsetTop || 0;
+      const leaveYearSettingsPosition = leaveYearSettingsRef.current?.offsetTop || 0;
       const emailSettingsPosition = emailSettingsRef.current?.offsetTop || 0;
       const paymentSettingsPosition = paymentSettingsRef.current?.offsetTop || 0;
       const storageSettingsPosition = storageSettingsRef.current?.offsetTop || 0;
@@ -284,6 +301,8 @@ export default function Settings() {
         setActiveSection('storage-settings');
       } else if (scrollPosition >= paymentSettingsPosition && paymentSettingsPosition > 0) {
         setActiveSection('payment-settings');
+      } else if (scrollPosition >= leaveYearSettingsPosition && leaveYearSettingsPosition > 0) {
+        setActiveSection('leave-year-settings');
       } else if (scrollPosition >= workingDaysSettingsPosition && workingDaysSettingsPosition > 0) {
         setActiveSection('working-days-settings');
       } else if (scrollPosition >= emailSettingsPosition && emailSettingsPosition > 0) {
@@ -412,6 +431,12 @@ export default function Settings() {
           {auth.user?.type !== 'superadmin' && (auth.permissions?.includes('manage-working-days-settings') || auth.user?.type === 'company') && (
             <section id="working-days-settings" ref={workingDaysSettingsRef} className="mb-8">
               <WorkingDaysSettings settings={systemSettings} />
+            </section>
+          )}
+
+          {canManageLeaveYear && (
+            <section id="leave-year-settings" ref={leaveYearSettingsRef} className="mb-8">
+              <LeaveYearSettings settings={systemSettings} />
             </section>
           )}
 

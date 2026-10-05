@@ -8,6 +8,7 @@ use App\Models\LeaveBalanceSync;
 use App\Models\LeavePolicy;
 use App\Models\LeaveType;
 use App\Models\User;
+use App\Services\LeaveYearCycle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -94,7 +95,8 @@ class LeaveBalanceController extends Controller
             return redirect()->back()->with('error', __('Permission Denied.'));
         }
 
-        $currentYear = isDemo() ? now()->year : (int) ($request->year ?? now()->year);
+        $systemYear = LeaveYearCycle::startYear();
+        $currentYear = isDemo() ? $systemYear : (int) ($request->year ?? $systemYear);
         $companyIds = getCompanyAndUsersId();
 
         // Get all active leave types for this company
@@ -169,9 +171,8 @@ class LeaveBalanceController extends Controller
         $employees->setCollection($employeeBalances);
 
         // Year options (current year ± 2)
-        $systemYear = now()->year;
         $yearOptions = collect(range($systemYear - 2, $systemYear + 2))
-            ->map(fn ($y) => ['value' => (string) $y, 'label' => (string) $y])
+            ->map(fn ($y) => ['value' => (string) $y, 'label' => LeaveYearCycle::label($y)])
             ->values();
 
         return Inertia::render('hr/leave-balances/index', [
@@ -192,7 +193,7 @@ class LeaveBalanceController extends Controller
     public function sync(Request $request)
     {
         if (Auth::user()->can('sync-leave-balances')) {
-            $year = now()->year;
+            $year = LeaveYearCycle::startYear();
             $authUserId = creatorId();
             $companyId = getCompanyId($authUserId);
 
@@ -205,7 +206,7 @@ class LeaveBalanceController extends Controller
                 'synced_by' => Auth::id(),
             ]);
 
-            return back()->with('success', __('Leave balances synced successfully for :year.', ['year' => $year]));
+            return back()->with('success', __('Leave balances synced successfully for :year.', ['year' => LeaveYearCycle::label($year)]));
         } else {
             return redirect()->back()->with('error', __('Permission Denied.'));
         }
@@ -250,9 +251,9 @@ class LeaveBalanceController extends Controller
                 ];
             });
 
-            $systemYear = now()->year;
+            $systemYear = LeaveYearCycle::startYear();
             $yearOptions = collect(range($systemYear - 2, $systemYear + 2))
-                ->map(fn ($y) => ['value' => (string) $y, 'label' => (string) $y])
+                ->map(fn ($y) => ['value' => (string) $y, 'label' => LeaveYearCycle::label($y)])
                 ->values();
 
             return Inertia::render('hr/leave-balances/sync-history', [

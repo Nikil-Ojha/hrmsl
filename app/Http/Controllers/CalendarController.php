@@ -194,7 +194,8 @@ class CalendarController extends Controller
                 ->get()
                 ->map(function ($meeting) {
                     return [
-                        'id' => $meeting->id,
+                        // IDs must be unique across event sources (holidays, leave, birthdays).
+                        'id' => 'meeting_' . $meeting->id,
                         'title' => $meeting->title,
                         'start' => Carbon::parse($meeting->meeting_date)->format('Y-m-d') . 'T' . Carbon::parse($meeting->start_time)->format('H:i:s'),
                         'end' => Carbon::parse($meeting->meeting_date)->format('Y-m-d') . 'T' . Carbon::parse($meeting->end_time)->format('H:i:s'),
@@ -211,7 +212,7 @@ class CalendarController extends Controller
                 ->get()
                 ->map(function ($holiday) {
                     return [
-                        'id' => $holiday->id,
+                        'id' => 'holiday_' . $holiday->id,
                         'title' => $holiday->name,
                         'start' => $holiday->start_date,
                         'end' => $holiday->end_date ?: $holiday->start_date,
@@ -231,7 +232,7 @@ class CalendarController extends Controller
                 ->map(function ($leave) {
                     $rawAvatar = $leave->employee?->getRawOriginal('avatar');
                     return [
-                        'id' => $leave->id,
+                        'id' => 'leave_' . $leave->id,
                         'title' => $leave->employee->name . ' - ' . $leave->leaveType->name,
                         'start' => $leave->start_date,
                         'end' => Carbon::parse($leave->end_date)->addDay()->format('Y-m-d'),
@@ -253,7 +254,7 @@ class CalendarController extends Controller
             ->map(function ($employee) use ($year) {
                 $rawAvatar = $employee->user->getRawOriginal('avatar');
                 return [
-                    'id'    => $employee->id,
+                    'id'    => 'birthday_' . $employee->id,
                     'title' => ($employee->user->name ?? 'Employee') . "'s Birthday 🎉",
                     'start' => Carbon::create(
                         $year,

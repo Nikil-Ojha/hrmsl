@@ -102,6 +102,14 @@ class HandleInertiaRequests extends Middleware
             }
 
             // Merge currency settings with other settings
+            $settings = $settings instanceof \Illuminate\Support\Collection
+                ? $settings->toArray()
+                : $settings;
+
+            $currencySettings = $currencySettings instanceof \Illuminate\Support\Collection
+                ? $currencySettings->toArray()
+                : $currencySettings;
+
             $globalSettings = array_merge($settings, $currencySettings);
             $globalSettings['base_url'] = config('app.url');
             $globalSettings['image_url'] = config('app.url');

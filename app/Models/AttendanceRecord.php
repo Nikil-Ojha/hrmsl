@@ -11,6 +11,7 @@ class AttendanceRecord extends BaseModel
 
     protected $fillable = [
         'employee_id',
+        'biometric_id',
         'shift_id',
         'attendance_policy_id',
         'date',

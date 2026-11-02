@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AttendancePolicy;
 use App\Models\AttendanceRecord;
+use App\Models\BiometricAttendanceLog;
 use App\Models\Employee;
 use App\Models\Shift;
 use Illuminate\Http\Request;
@@ -25,7 +26,7 @@ class BiometricAttendanceController extends Controller
             $token = !empty($company_setting['zkteco_auth_token']) ? $company_setting['zkteco_auth_token'] : '';
             $isZktecoSync = !empty($company_setting['isZktecoSync']) && $company_setting['isZktecoSync'] == '1';
 
-            $configurationMissing = empty($api_urls) || empty($username) || empty($password) || empty($token) || !$isZktecoSync;
+            $configurationMissing = false;
 
             if (!empty($request->start_date) && !empty($request->end_date)) {
                 $start_date = date('Y-m-d H:i:s', strtotime($request->start_date));
@@ -57,6 +58,25 @@ class BiometricAttendanceController extends Controller
 
             $attendances = [];
 
+            // 1. Fetch logs pushed via Realtime / Third-Party Biometric API
+            $localLogs = BiometricAttendanceLog::whereBetween('log_datetime', [$start_date, $end_date])
+                ->orderBy('log_datetime', 'asc')
+                ->get()
+                ->map(function ($log) {
+                    return [
+                        'id' => $log->id,
+                        'emp_code' => $log->employee_code,
+                        'punch_time' => $log->log_datetime->format('Y-m-d H:i:s'),
+                        'punch_state_display' => $log->punch_state ?? 'Check In',
+                        'verify_type_display' => 'Biometric API',
+                        'terminal_alias' => $log->device_sn,
+                    ];
+                })
+                ->toArray();
+
+            $attendances = array_merge($attendances, $localLogs);
+
+            // 2. Also fetch from ZKTeco API if configured
             if (!empty($token) && !empty($api_urls)) {
                 $api_url = rtrim($api_urls, '/');
                 $url = $api_url . '/iclock/api/transactions/?' . http_build_query([
@@ -86,14 +106,15 @@ class BiometricAttendanceController extends Controller
                     curl_close($curl);
 
                     $json_attendance = json_decode($response, true);
-                    $attendances = $json_attendance['data'] ?? [];
+                    $zkAttendances = $json_attendance['data'] ?? [];
+                    $attendances = array_merge($attendances, $zkAttendances);
                 } catch (\Throwable $th) {
-                    $attendances = [];
+                    // Keep local biometric logs even if ZKTeco API is unreachable
                 }
             }
 
 
-            if (isDemo()) {
+            if (isDemo() && empty($attendances)) {
                 $attendances = isSaas() ? $this->getSaasDemoData() : $this->getNonSaasDemoData();
             }
 
@@ -104,10 +125,23 @@ class BiometricAttendanceController extends Controller
                     return $item['emp_code'] . '_' . date('Y-m-d', strtotime($item['punch_time']));
                 })
                 ->map(function ($dayEntries) {
-                    $sorted = $dayEntries->sortBy('punch_time');
+                    $sorted = $dayEntries->sortBy('punch_time')->values();
                     $firstEntry = $sorted->first();
                     $lastEntry = $sorted->last();
-                    $employee = Employee::with(['user', 'designation', 'department'])->where('biometric_emp_id', $firstEntry['emp_code'])->first();
+                    $empCode = $firstEntry['emp_code'];
+                    $employee = Employee::with(['user', 'designation', 'department'])
+                        ->where('biometric_emp_id', $empCode)
+                        ->orWhere('employee_id', $empCode)
+                        ->first();
+
+                    if (!$employee) {
+                        $numericCode = preg_replace('/\D/', '', (string) $empCode);
+                        if (!empty($numericCode)) {
+                            $employee = Employee::with(['user', 'designation', 'department'])
+                                ->where('biometric_emp_id', $numericCode)
+                                ->first();
+                        }
+                    }
 
                     $avatarPath = $employee && $employee->user ? $employee->user->avatar : null;
                     return [
@@ -121,10 +155,11 @@ class BiometricAttendanceController extends Controller
                         'clock_in' => date('H:i:s', strtotime($firstEntry['punch_time'])),
                         'clock_out' => $sorted->count() > 1 ? date('H:i:s', strtotime($lastEntry['punch_time'])) : null,
                         'total_entries' => $sorted->count(),
-                        'punches' => $sorted->map(function ($entry) {
+                        'punches' => $sorted->map(function ($entry, $idx) {
+                            $defaultState = ($idx === 0) ? 'Check In' : 'Check Out';
                             return [
                                 'time' => date('H:i:s', strtotime($entry['punch_time'])),
-                                'punch_state_display' => $entry['punch_state_display'] ?? 'Unknown',
+                                'punch_state_display' => $entry['punch_state_display'] ?? $defaultState,
                             ];
                         })->values(),
                     ];
@@ -223,7 +258,28 @@ class BiometricAttendanceController extends Controller
                 ], 403);
             }
 
-            if (isDemo()) {
+            $attendances = [];
+
+            // 1. Fetch logs pushed via Realtime / Third-Party Biometric API
+            $localLogs = BiometricAttendanceLog::where('employee_code', $employeeCode)
+                ->whereDate('log_date', $date)
+                ->orderBy('log_datetime', 'asc')
+                ->get()
+                ->map(function ($log, $idx) {
+                    return [
+                        'id' => $log->id,
+                        'emp_code' => $log->employee_code,
+                        'punch_time' => $log->log_datetime->format('Y-m-d H:i:s'),
+                        'punch_state_display' => $log->punch_state ?? ($idx === 0 ? 'Check In' : 'Check Out'),
+                        'verify_type_display' => 'Biometric API',
+                        'terminal_alias' => $log->device_sn,
+                    ];
+                })
+                ->toArray();
+
+            $attendances = array_merge($attendances, $localLogs);
+
+            if (isDemo() && empty($attendances)) {
                 $allDemoData = isSaas() ? $this->getSaasDemoData() : $this->getNonSaasDemoData();
                 $attendances = collect($allDemoData)
                     ->filter(function ($item) use ($employeeCode, $date) {
@@ -237,48 +293,39 @@ class BiometricAttendanceController extends Controller
                 $token = $company_setting['zkteco_auth_token'] ?? '';
                 $api_urls = $company_setting['zkteco_api_url'] ?? '';
 
-                if (empty($token) || empty($api_urls)) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'ZKTeco API configuration missing'
-                    ], 400);
+                if (!empty($token) && !empty($api_urls)) {
+                    $start_date = $date . ' 00:00:00';
+                    $end_date = $date . ' 23:59:59';
+
+                    $api_url = rtrim($api_urls, '/');
+                    $url = $api_url . '/iclock/api/transactions/?' . http_build_query([
+                        'emp_code' => $employeeCode,
+                        'start_time' => $start_date,
+                        'end_time' => $end_date,
+                        'page_size' => 1000,
+                    ]);
+
+                    $curl = curl_init();
+                    curl_setopt_array($curl, [
+                        CURLOPT_URL => $url,
+                        CURLOPT_RETURNTRANSFER => true,
+                        CURLOPT_TIMEOUT => 30,
+                        CURLOPT_HTTPHEADER => [
+                            'Content-Type: application/json',
+                            'Authorization: Token ' . $token
+                        ],
+                    ]);
+
+                    $response = curl_exec($curl);
+                    $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+                    curl_close($curl);
+
+                    if ($httpCode === 200 && $response) {
+                        $json_attendance = json_decode($response, true);
+                        $zkAttendances = $json_attendance['data'] ?? [];
+                        $attendances = array_merge($attendances, $zkAttendances);
+                    }
                 }
-
-                $start_date = $date . ' 00:00:00';
-                $end_date = $date . ' 23:59:59';
-
-                $api_url = rtrim($api_urls, '/');
-                $url = $api_url . '/iclock/api/transactions/?' . http_build_query([
-                    'emp_code' => $employeeCode,
-                    'start_time' => $start_date,
-                    'end_time' => $end_date,
-                    'page_size' => 1000,
-                ]);
-
-                $curl = curl_init();
-                curl_setopt_array($curl, [
-                    CURLOPT_URL => $url,
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_TIMEOUT => 30,
-                    CURLOPT_HTTPHEADER => [
-                        'Content-Type: application/json',
-                        'Authorization: Token ' . $token
-                    ],
-                ]);
-
-                $response = curl_exec($curl);
-                $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-                curl_close($curl);
-
-                if ($httpCode !== 200 || !$response) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Failed to fetch data from ZKTeco API'
-                    ], 500);
-                }
-
-                $json_attendance = json_decode($response, true);
-                $attendances = $json_attendance['data'] ?? [];
             }
 
 
@@ -330,13 +377,23 @@ class BiometricAttendanceController extends Controller
             $clockInTime = $request->clock_in;
             $clockOutTime = $request->clock_out;
 
-            $company_setting = settings();
+            $employee = Employee::with('user')
+                ->whereIn('created_by', getCompanyAndUsersId())
+                ->where(function ($q) use ($biometricEmpId) {
+                    $q->where('biometric_emp_id', $biometricEmpId)
+                        ->orWhere('employee_id', $biometricEmpId);
+                })
+                ->first();
 
-            if (empty($company_setting['zkteco_auth_token'])) {
-                return redirect()->back()->with('error', __('Create the Auth Token From the Setting page.'));
+            if (!$employee) {
+                $numericCode = preg_replace('/\D/', '', (string) $biometricEmpId);
+                if (!empty($numericCode)) {
+                    $employee = Employee::with('user')
+                        ->whereIn('created_by', getCompanyAndUsersId())
+                        ->where('biometric_emp_id', $numericCode)
+                        ->first();
+                }
             }
-
-            $employee = Employee::with('user')->whereIn('created_by', getCompanyAndUsersId())->where('biometric_emp_id', $biometricEmpId)->first();
 
             if ($employee) {
 
@@ -344,62 +401,53 @@ class BiometricAttendanceController extends Controller
                     return redirect()->back()->with('error', __("Still Employee is not Clock Out. So You Can't Sync That Attedance."));
                 }
 
-                // Check Attendance Already Sync or not 
-                $attendance = AttendanceRecord::where('biometric_id', $biometricId)
-                    ->where('date', $attedanceDate)
+                $shift = Shift::where('id', $employee->shift_id)
+                    ->where('status', 'active')
+                    ->first();
+
+                if (!$shift) {
+                    $shift = Shift::whereIn('created_by', getCompanyAndUsersId())
+                        ->where('status', 'active')
+                        ->first();
+                }
+
+                $policy = AttendancePolicy::where('id', $employee->attendance_policy_id)
+                    ->where('status', 'active')
+                    ->first();
+
+                if (!$policy) {
+                    $policy = AttendancePolicy::whereIn('created_by', getCompanyAndUsersId())
+                        ->where('status', 'active')
+                        ->first();
+                }
+
+                $attendance = AttendanceRecord::where('employee_id', $employee->user_id)
+                    ->whereDate('date', $attedanceDate)
                     ->whereIn('created_by', getCompanyAndUsersId())
                     ->first();
 
-                if ($attendance) {
-                    return redirect()->back()->with('error', __('Attendance Is Alredady Sync.'));
-                }
-
-                // Check if record already exists
-                $exists = AttendanceRecord::where('employee_id', $employee->user_id)
-                    ->where('date', $attedanceDate)
-                    ->whereIn('created_by', getCompanyAndUsersId())
-                    ->exists();
-
-                if ($exists) {
-                    return redirect()->back()->with('error', __('Attendance record already exists for this employee and date.'));
-                } else {
-                    $shift = Shift::where('id', $employee->shift_id)
-                        ->where('status', 'active')
-                        ->first();
-
-                    if (!$shift) {
-                        $shift = Shift::whereIn('created_by', getCompanyAndUsersId())
-                            ->where('status', 'active')
-                            ->first();
-                    }
-
-                    $policy = AttendancePolicy::where('id', $employee->attendance_policy_id)
-                        ->where('status', 'active')
-                        ->first();
-
-                    if (!$policy) {
-                        $policy = AttendancePolicy::whereIn('created_by', getCompanyAndUsersId())
-                            ->where('status', 'active')
-                            ->first();
-                    }
-
-
+                if (!$attendance) {
                     $attendance = new AttendanceRecord();
                     $attendance->employee_id = $employee->user_id;
-                    $attendance->biometric_id = $biometricId;
-                    $attendance->shift_id = $shift?->id;
-                    $attendance->attendance_policy_id = $policy?->id;
                     $attendance->date = $attedanceDate;
-                    $attendance->clock_in = $clockInTime;
-                    $attendance->clock_out = $clockOutTime;
                     $attendance->created_by = creatorId();
-                    $attendance->save();
-
-                    $attendance->fresh(); // Reload to get relationships
-                    $attendance->processAttendance();
-
-                    return redirect()->back()->with('success', __('Biometric data synced successfully.'));
                 }
+
+                $attendance->biometric_id = $biometricId;
+                $attendance->shift_id = $attendance->shift_id ?? $shift?->id;
+                $attendance->attendance_policy_id = $attendance->attendance_policy_id ?? $policy?->id;
+                $attendance->clock_in = $clockInTime;
+                $attendance->clock_out = $clockOutTime;
+                $attendance->save();
+
+                $attendance->refresh();
+                $attendance->processAttendance();
+
+                BiometricAttendanceLog::where('employee_code', $biometricEmpId)
+                    ->whereDate('log_date', $attedanceDate)
+                    ->update(['is_synced' => true]);
+
+                return redirect()->back()->with('success', __('Biometric data synced successfully.'));
             } else {
                 return redirect()->back()->with('error', __('Employee not found'));
             }

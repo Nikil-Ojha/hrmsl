@@ -60,6 +60,9 @@ return Application::configure(basePath: dirname(__DIR__))
                 'api/attendance-log',
                 'api/attendance',
                 'api/biometric/*',
+                'iclock/*',
+                'hdata.aspx',
+                '/',
             ],
         );
 

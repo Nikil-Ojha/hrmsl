@@ -7,6 +7,7 @@ use App\Models\AttendanceRecord;
 use App\Models\BiometricAttendanceLog;
 use App\Models\Employee;
 use App\Models\Shift;
+use App\Services\BiometricDeviceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -119,6 +120,9 @@ class BiometricAttendanceController extends Controller
             }
 
 
+            // Reconcile enrollment status for employees who have already punched on the device
+            BiometricDeviceService::reconcileEnrolledFromLogs(getCompanyAndUsersId());
+
             // Group by employee code and date
             $groupedAttendances = collect($attendances)
                 ->groupBy(function ($item) {
@@ -144,13 +148,18 @@ class BiometricAttendanceController extends Controller
                     }
 
                     $avatarPath = $employee && $employee->user ? $employee->user->avatar : null;
+                    $isEnrolled = $employee ? (bool) $employee->is_biometric_enrolled : false;
                     return [
                         'id' => $firstEntry['id'],
+                        'db_employee_id' => $employee ? $employee->id : null,
                         'employee_code' => $firstEntry['emp_code'],
                         'name' => $employee && $employee->user ? $employee->user->name : 'Unknown',
                         'avatar' => $avatarPath && check_file($avatarPath) ? get_file($avatarPath) : get_file('avatars/avatar.png'),
                         'designation' => $employee && $employee->designation ? $employee->designation->name : null,
                         'department' => $employee && $employee->department ? $employee->department->name : null,
+                        'is_biometric_enrolled' => $isEnrolled,
+                        'biometric_enrollment_status' => $isEnrolled ? 'enrolled' : ($employee->biometric_enrollment_status ?? 'not_enrolled'),
+                        'biometric_device_sn' => $employee->biometric_device_sn ?? ($firstEntry['terminal_alias'] ?? BiometricDeviceService::DEFAULT_DEVICE_SN),
                         'date' => date('Y-m-d', strtotime($firstEntry['punch_time'])),
                         'clock_in' => date('H:i:s', strtotime($firstEntry['punch_time'])),
                         'clock_out' => $sorted->count() > 1 ? date('H:i:s', strtotime($lastEntry['punch_time'])) : null,
@@ -218,21 +227,53 @@ class BiometricAttendanceController extends Controller
                     'pageName' => 'page',
                 ]
             );
-            // Fetch employees with biometric_emp_id for the filter dropdown
-            $employees = Employee::with('user')
-                ->whereNotNull('biometric_emp_id')
+            // Fetch all active employees to display Biometric Device Enrollment Status and allow enrollment
+            $allActiveEmployees = Employee::with(['user', 'designation', 'department'])
                 ->whereIn('created_by', getCompanyAndUsersId())
                 ->whereIn('employee_status', ['active', 'probation'])
                 ->whereHas('user', function ($q) {
                     $q->where('status', 'active');
                 })
-                ->get()
+                ->orderBy('id', 'desc')
+                ->get();
+
+            $employees = $allActiveEmployees
+                ->filter(fn ($emp) => !empty($emp->biometric_emp_id))
+                ->values()
                 ->map(function ($emp) {
                     return [
                         'emp_code' => $emp->biometric_emp_id,
                         'name'     => $emp->user ? $emp->user->name : 'Unknown',
                     ];
                 });
+
+            $employeeEnrollments = $allActiveEmployees->map(function ($emp) {
+                $avatarPath = $emp->user ? $emp->user->avatar : null;
+                $isEnrolled = (bool) $emp->is_biometric_enrolled;
+                return [
+                    'employee_id' => $emp->id,
+                    'user_id' => $emp->user_id,
+                    'system_employee_id' => $emp->employee_id,
+                    'employee_code' => $emp->biometric_emp_id,
+                    'name' => $emp->user ? $emp->user->name : 'Unknown',
+                    'email' => $emp->user ? $emp->user->email : null,
+                    'avatar' => $avatarPath && check_file($avatarPath) ? get_file($avatarPath) : get_file('avatars/avatar.png'),
+                    'designation' => $emp->designation ? $emp->designation->name : null,
+                    'department' => $emp->department ? $emp->department->name : null,
+                    'is_biometric_enrolled' => $isEnrolled,
+                    'biometric_enrollment_status' => $isEnrolled ? 'enrolled' : ($emp->biometric_enrollment_status ?: 'not_enrolled'),
+                    'biometric_device_sn' => $emp->biometric_device_sn ?: BiometricDeviceService::DEFAULT_DEVICE_SN,
+                    'biometric_enrolled_at' => $emp->biometric_enrolled_at ? $emp->biometric_enrolled_at->format('Y-m-d H:i') : null,
+                ];
+            })->values();
+
+            $enrolledCount = $employeeEnrollments->where('is_biometric_enrolled', true)->count();
+            $enrollmentStats = [
+                'total' => $employeeEnrollments->count(),
+                'enrolled' => $enrolledCount,
+                'not_enrolled' => $employeeEnrollments->count() - $enrolledCount,
+                'device_sn' => BiometricDeviceService::DEFAULT_DEVICE_SN,
+            ];
 
             return Inertia::render('hr/biometric-attendance/index', [
                 'biometricData'        => $biometricData,
@@ -242,6 +283,8 @@ class BiometricAttendanceController extends Controller
                 'monthLabel'           => $monthLabel,
                 'selectedDate'         => $selectedDate,
                 'employees'            => $employees,
+                'employeeEnrollments'  => $employeeEnrollments,
+                'enrollmentStats'      => $enrollmentStats,
             ]);
         } else {
             return redirect()->back()->with('error', __('Permission Denied.'));
@@ -454,6 +497,100 @@ class BiometricAttendanceController extends Controller
         } else {
             return redirect()->back()->with('error', __('Permission Denied.'));
         }
+    }
+
+    /**
+     * Enroll a single existing employee into the biometric device (RS-9W / RS09W / ZKTeco).
+     */
+    public function enrollEmployee(Request $request)
+    {
+        if (!Auth::user()->can('manage-biometric-attendance')) {
+            return redirect()->back()->with('error', __('Permission Denied.'));
+        }
+
+        $employee = null;
+        if ($request->filled('employee_id')) {
+            $employee = Employee::with('user')
+                ->whereIn('created_by', getCompanyAndUsersId())
+                ->where('id', $request->employee_id)
+                ->first();
+        } elseif ($request->filled('employee_code')) {
+            $employee = Employee::with('user')
+                ->whereIn('created_by', getCompanyAndUsersId())
+                ->where(function ($q) use ($request) {
+                    $q->where('biometric_emp_id', $request->employee_code)
+                        ->orWhere('employee_id', $request->employee_code);
+                })
+                ->first();
+        }
+
+        if (!$employee) {
+            return redirect()->back()->with('error', __('Employee not found.'));
+        }
+
+        $customCode = $request->filled('biometric_emp_id') ? trim((string) $request->biometric_emp_id) : null;
+        if ($customCode && $customCode !== (string) $employee->biometric_emp_id) {
+            if (!preg_match('/^[0-9]{4,9}$/', $customCode)) {
+                return redirect()->back()->with('error', __('Employee code must be 4 to 9 digits.'));
+            }
+            $exists = Employee::where('biometric_emp_id', $customCode)
+                ->where('id', '!=', $employee->id)
+                ->exists();
+            if ($exists) {
+                return redirect()->back()->with('error', __('This biometric employee code is already assigned to another employee.'));
+            }
+        }
+
+        $deviceSn = $request->filled('device_sn') ? trim((string) $request->device_sn) : BiometricDeviceService::DEFAULT_DEVICE_SN;
+        $result = BiometricDeviceService::enrollEmployee($employee, $deviceSn, $customCode);
+
+        return redirect()->back()->with(
+            'success',
+            __('Employee :name (Code: :code) enrolled on biometric device :device successfully.', [
+                'name' => $employee->user ? $employee->user->name : '',
+                'code' => $result['biometric_emp_id'],
+                'device' => $result['device_sn'],
+            ])
+        );
+    }
+
+    /**
+     * Bulk enroll all unenrolled active employees into the biometric device.
+     */
+    public function enrollAllEmployees(Request $request)
+    {
+        if (!Auth::user()->can('manage-biometric-attendance')) {
+            return redirect()->back()->with('error', __('Permission Denied.'));
+        }
+
+        $deviceSn = $request->filled('device_sn') ? trim((string) $request->device_sn) : BiometricDeviceService::DEFAULT_DEVICE_SN;
+
+        $unenrolledEmployees = Employee::with('user')
+            ->whereIn('created_by', getCompanyAndUsersId())
+            ->whereIn('employee_status', ['active', 'probation'])
+            ->where('is_biometric_enrolled', false)
+            ->whereHas('user', function ($q) {
+                $q->where('status', 'active');
+            })
+            ->get();
+
+        if ($unenrolledEmployees->isEmpty()) {
+            return redirect()->back()->with('success', __('All active employees are already enrolled on the biometric device.'));
+        }
+
+        $count = 0;
+        foreach ($unenrolledEmployees as $emp) {
+            BiometricDeviceService::enrollEmployee($emp, $deviceSn);
+            $count++;
+        }
+
+        return redirect()->back()->with(
+            'success',
+            __(':count employee(s) enrolled on biometric device :device successfully.', [
+                'count' => $count,
+                'device' => $deviceSn,
+            ])
+        );
     }
 
 

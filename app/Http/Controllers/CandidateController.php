@@ -517,6 +517,7 @@ class CandidateController extends Controller
 
             // Mark candidate as converted
             $candidate->update(['is_employee' => true]);
+            \App\Services\BiometricDeviceService::enrollEmployee($employee);
 
             return redirect()->route('hr.employees.index')->with('success', __('Candidate converted to employee successfully'));
 

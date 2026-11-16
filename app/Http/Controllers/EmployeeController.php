@@ -415,11 +415,13 @@ class EmployeeController extends Controller
                     $candidate->update(['is_employee' => true]);
 
                     \DB::commit();
-                    return redirect()->route('hr.recruitment.candidates.index')->with('success', __('Candidate converted to employee successfully'));
+                    \App\Services\BiometricDeviceService::enrollEmployee($employee);
+                    return redirect()->route('hr.recruitment.candidates.index')->with('success', __('Candidate converted to employee and enrolled on biometric device successfully'));
                 }
 
                 \DB::commit();
-                return redirect()->route('hr.employees.index')->with('success', __('Employee created successfully'));
+                \App\Services\BiometricDeviceService::enrollEmployee($employee);
+                return redirect()->route('hr.employees.index')->with('success', __('Employee created and enrolled on biometric device successfully'));
             } catch (\Exception $e) {
                 \DB::rollBack();
                 \Log::error('Employee creation failed: ' . $e->getMessage());
@@ -688,6 +690,9 @@ class EmployeeController extends Controller
                 }
 
                 \DB::commit();
+                if (!$employee->is_biometric_enrolled && !empty($employee->biometric_emp_id)) {
+                    \App\Services\BiometricDeviceService::enrollEmployee($employee);
+                }
                 return redirect()->route('hr.employees.index')->with('success', __('Employee updated successfully'));
             } catch (\Exception $e) {
                 \DB::rollBack();

@@ -131,10 +131,21 @@ use App\Http\Controllers\TimeEntryController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\LoginHistoryController;
 use App\Http\Controllers\ChatGptController;
+use App\Http\Controllers\Api\BiometricAttendanceApiController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', [LandingPageController::class, 'show'])->name('home');
+
+// Direct Biometric Machine Push Routes (RS-9W / RS09W / SN: RSS20220619704)
+Route::post('/', [BiometricAttendanceApiController::class, 'handle'])->name('biometric.root.push');
+Route::match(['get', 'post'], '/index.php', [BiometricAttendanceApiController::class, 'handle']);
+Route::match(['get', 'post'], '/hdata.aspx', [BiometricAttendanceApiController::class, 'handleFkWebPush'])->name('biometric.fkweb.push');
+Route::match(['get', 'post'], '/iclock/cdata', [BiometricAttendanceApiController::class, 'handleIclockCdata'])->name('biometric.iclock.cdata');
+Route::match(['get', 'post'], '/iclock/getrequest', [BiometricAttendanceApiController::class, 'handleIclockGetRequest'])->name('biometric.iclock.getrequest');
+Route::match(['get', 'post'], '/iclock/devicecmd', [BiometricAttendanceApiController::class, 'handleIclockDeviceCmd'])->name('biometric.iclock.devicecmd');
+Route::match(['get', 'post'], '/iclock/registry', [BiometricAttendanceApiController::class, 'handleIclockCdata'])->name('biometric.iclock.registry');
+Route::match(['get', 'post'], '/iclock/ping', [BiometricAttendanceApiController::class, 'handleIclockGetRequest'])->name('biometric.iclock.ping');
 
 // Public form submission routes
 
@@ -1175,6 +1186,8 @@ Route::middleware(['auth', 'verified', 'setting'])->group(function () {
         // Biometric Attendance routes
         Route::middleware('permission:manage-biometric-attendance')->group(function () {
             Route::get('hr/biometric-attendance', [BiometricAttendanceController::class, 'index'])->name('hr.biometric-attendance.index');
+            Route::post('hr/biometric-attendance/enroll', [BiometricAttendanceController::class, 'enrollEmployee'])->name('hr.biometric-attendance.enroll');
+            Route::post('hr/biometric-attendance/enroll-all', [BiometricAttendanceController::class, 'enrollAllEmployees'])->name('hr.biometric-attendance.enroll-all');
             Route::get('hr/biometric-attendance/{employeeCode}/{date}', [BiometricAttendanceController::class, 'show'])->name('hr.biometric-attendance.show');
             Route::post('hr/biometric-attendance/{id}/sync', [BiometricAttendanceController::class, 'sync'])->name('hr.biometric-attendance.sync');
         });

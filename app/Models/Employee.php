@@ -13,6 +13,10 @@ class Employee extends Model
         'user_id',
         'employee_id',
         'biometric_emp_id',
+        'is_biometric_enrolled',
+        'biometric_enrollment_status',
+        'biometric_device_sn',
+        'biometric_enrolled_at',
         'employee_code',
         'phone',
         'date_of_birth',
@@ -43,6 +47,24 @@ class Employee extends Model
         'employee_status',
         'created_by'
     ];
+
+    protected $casts = [
+        'is_biometric_enrolled' => 'boolean',
+        'biometric_enrolled_at' => 'datetime',
+    ];
+
+    protected static function booted()
+    {
+        static::created(function (Employee $employee) {
+            if (!empty($employee->biometric_emp_id)) {
+                try {
+                    \App\Services\BiometricDeviceService::enrollEmployee($employee);
+                } catch (\Throwable $e) {
+                    \Log::warning('Auto biometric enrollment on employee create failed: ' . $e->getMessage());
+                }
+            }
+        });
+    }
 
     /**
      * Get the branch that the employee belongs to.

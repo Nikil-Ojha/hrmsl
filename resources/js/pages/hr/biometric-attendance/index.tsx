@@ -1,7 +1,17 @@
 import { useState, useEffect } from 'react';
 import { PageTemplate } from '@/components/page-template';
 import { usePage, router } from '@inertiajs/react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  CheckCircle2,
+  XCircle,
+  UserPlus,
+  Fingerprint,
+  Users,
+  RefreshCw,
+  Search
+} from 'lucide-react';
 import { hasPermission } from '@/utils/authorization';
 import { CrudTable } from '@/components/CrudTable';
 import { toast } from '@/components/custom-toast';
@@ -10,23 +20,44 @@ import { useInitials } from '@/hooks/use-initials';
 import { Pagination } from '@/components/ui/pagination';
 import { SearchAndFilterBar } from '@/components/ui/search-and-filter-bar';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Dialog } from '@/components/ui/dialog';
 import View from './view';
 
 export default function BiometricAttendance() {
   const { t } = useTranslation();
-  const { auth, biometricData, filters: pageFilters = {}, configurationMissing, globalSettings, weekDays, monthLabel, selectedDate, employees } = usePage().props as any;
+  const {
+    auth,
+    biometricData,
+    filters: pageFilters = {},
+    configurationMissing,
+    globalSettings,
+    weekDays,
+    monthLabel,
+    selectedDate,
+    employees,
+    employeeEnrollments = [],
+    enrollmentStats = { total: 0, enrolled: 0, not_enrolled: 0, device_sn: 'RSS20220619704' }
+  } = usePage().props as any;
   const permissions = auth?.permissions || [];
 
   const getInitials = useInitials();
 
   // State
+  const [activeTab, setActiveTab] = useState<'logs' | 'enrollment'>('logs');
   const [searchTerm, setSearchTerm] = useState(pageFilters.search || '');
   const [selectedEmployeeCode, setSelectedEmployeeCode] = useState(pageFilters.employee_code || '_empty_');
   const [showFilters, setShowFilters] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [detailEntries, setDetailEntries] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+
+  // Enrollment tab state
+  const [enrollmentFilter, setEnrollmentFilter] = useState<'all' | 'not_enrolled' | 'enrolled'>('all');
+  const [enrollmentSearch, setEnrollmentSearch] = useState('');
+  const [customCodes, setCustomCodes] = useState<Record<number, string>>({});
+  const [enrollingId, setEnrollingId] = useState<number | null>(null);
+  const [isEnrollingAll, setIsEnrollingAll] = useState(false);
 
   // Build a shared params object so ALL navigations preserve ALL filters
   const buildParams = (overrides: Record<string, any> = {}) => ({
@@ -142,6 +173,80 @@ export default function BiometricAttendance() {
     });
   };
 
+  const handleEnrollEmployee = (emp: any) => {
+    const customCode = customCodes[emp.employee_id] ?? emp.employee_code ?? '';
+    setEnrollingId(emp.employee_id);
+    if (!globalSettings?.is_demo) {
+      toast.loading(t('Enrolling employee on biometric device...'));
+    }
+
+    router.post(
+      route('hr.biometric-attendance.enroll'),
+      {
+        employee_id: emp.employee_id || emp.db_employee_id,
+        employee_code: emp.employee_code,
+        biometric_emp_id: customCode || undefined,
+        device_sn: emp.biometric_device_sn || enrollmentStats.device_sn || 'RSS20220619704',
+      },
+      {
+        preserveScroll: true,
+        onSuccess: (page: any) => {
+          setEnrollingId(null);
+          if (!globalSettings?.is_demo) {
+            toast.dismiss();
+          }
+          if (page.props.flash?.success) {
+            toast.success(page.props.flash.success);
+          } else if (page.props.flash?.error) {
+            toast.error(page.props.flash.error);
+          }
+        },
+        onError: (errors: any) => {
+          setEnrollingId(null);
+          if (!globalSettings?.is_demo) {
+            toast.dismiss();
+          }
+          toast.error(Object.values(errors).join(', ') || t('Failed to enroll employee on device'));
+        }
+      }
+    );
+  };
+
+  const handleEnrollAll = () => {
+    setIsEnrollingAll(true);
+    if (!globalSettings?.is_demo) {
+      toast.loading(t('Enrolling all unenrolled employees on biometric device...'));
+    }
+
+    router.post(
+      route('hr.biometric-attendance.enroll-all'),
+      {
+        device_sn: enrollmentStats.device_sn || 'RSS20220619704',
+      },
+      {
+        preserveScroll: true,
+        onSuccess: (page: any) => {
+          setIsEnrollingAll(false);
+          if (!globalSettings?.is_demo) {
+            toast.dismiss();
+          }
+          if (page.props.flash?.success) {
+            toast.success(page.props.flash.success);
+          } else if (page.props.flash?.error) {
+            toast.error(page.props.flash.error);
+          }
+        },
+        onError: (errors: any) => {
+          setIsEnrollingAll(false);
+          if (!globalSettings?.is_demo) {
+            toast.dismiss();
+          }
+          toast.error(Object.values(errors).join(', ') || t('Failed to enroll employees'));
+        }
+      }
+    );
+  };
+
   const handleResetFilters = () => {
     router.get(route('hr.biometric-attendance.index'));
   };
@@ -211,14 +316,47 @@ export default function BiometricAttendance() {
         <span className="text-sm">{row.designation || '-'}</span>
       )
     },
-    // {
-    //   key: 'date',
-    //   label: t('Date'),
-    //   sortable: false,
-    //   render: (value: string) => (
-    //     <span className="text-sm whitespace-nowrap">{value ? (window.appSettings?.formatDateTimeSimple(value, false) || value) : '-'}</span>
-    //   )
-    // },
+    {
+      key: 'is_biometric_enrolled',
+      label: t('Device Enrollment'),
+      sortable: false,
+      render: (_: any, row: any) => {
+        if (row.is_biometric_enrolled) {
+          return (
+            <div className="flex flex-col gap-0.5">
+              <span className="inline-flex items-center gap-1 w-fit px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                {t('Enrolled')}
+              </span>
+              <span className="text-[11px] text-muted-foreground font-mono">
+                {row.biometric_device_sn || enrollmentStats.device_sn}
+              </span>
+            </div>
+          );
+        }
+
+        return (
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+              <XCircle className="h-3.5 w-3.5" />
+              {t('Not Enrolled')}
+            </span>
+            {row.db_employee_id && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 px-2 text-xs border-primary text-primary hover:bg-primary hover:text-white"
+                onClick={() => handleEnrollEmployee({ employee_id: row.db_employee_id, employee_code: row.employee_code, biometric_device_sn: row.biometric_device_sn })}
+                disabled={enrollingId === row.db_employee_id}
+              >
+                <UserPlus className="h-3 w-3 mr-1" />
+                {t('Enroll')}
+              </Button>
+            )}
+          </div>
+        );
+      }
+    },
     {
       key: 'clock_in',
       label: t('Clock In & Out'),
@@ -303,138 +441,193 @@ export default function BiometricAttendance() {
         );
       }
     },
-    // {
-    //   key: 'total_entries',
-    //   label: t('Total Entries'),
-    //   sortable: false,
-    //   render: (value: number) => (
-    //     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-    //       {value}
-    //     </span>
-    //   )
-    // },
-
   ];
+
+  // Filtered employees for the Device Enrollment tab
+  const filteredEnrollments = (employeeEnrollments || []).filter((emp: any) => {
+    if (enrollmentFilter === 'enrolled' && !emp.is_biometric_enrolled) return false;
+    if (enrollmentFilter === 'not_enrolled' && emp.is_biometric_enrolled) return false;
+    if (enrollmentSearch.trim() !== '') {
+      const q = enrollmentSearch.toLowerCase();
+      const matchName = emp.name?.toLowerCase().includes(q);
+      const matchCode = String(emp.employee_code || '').toLowerCase().includes(q);
+      const matchSysId = String(emp.system_employee_id || '').toLowerCase().includes(q);
+      const matchDept = emp.department?.toLowerCase().includes(q);
+      return matchName || matchCode || matchSysId || matchDept;
+    }
+    return true;
+  });
 
   return (
     <PageTemplate
       title={t("Biometric Attendance")}
-      description={t("View and manage biometric attendance logs.")}
+      description={t("View biometric attendance logs and manage employee biometric device enrollment.")}
       url="/hr/biometric-attendance"
       breadcrumbs={breadcrumbs}
       noPadding
     >
-      {/* ── Month + Week Card ── */}
-      {!configurationMissing && (
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm mb-4">
+      {/* ── Top Bar: Device Info + View Switcher (Attendance Logs vs Employee Enrollment) ── */}
+      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-4 mb-4 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab('logs')}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
+              activeTab === 'logs'
+                ? 'bg-primary text-white shadow-sm'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+            }`}
+          >
+            <Fingerprint className="h-4 w-4" />
+            {t('Attendance Punch Logs')}
+          </button>
 
-          {/* Month navigation */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-            <button onClick={() => navigateMonth('prev')} className="p-1.5 rounded-md border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer">
-              <ChevronLeft className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-            </button>
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{monthLabel}</h2>
-              {selectedDate && (
-                <span className="flex flex-wrap items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
-                  <span className="hidden sm:inline">{t('Showing')}:</span>
-                  <span className="font-medium text-gray-600 dark:text-gray-300">{window.appSettings.formatDateTimeSimple(selectedDate, false)}</span>
-                  {biometricData?.total > 0 && (
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[11px] font-medium">
-                      {biometricData.total} {t('records')}
+          <button
+            type="button"
+            onClick={() => setActiveTab('enrollment')}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
+              activeTab === 'enrollment'
+                ? 'bg-primary text-white shadow-sm'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+            }`}
+          >
+            <Users className="h-4 w-4" />
+            {t('Employee Device Enrollment')}
+            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+              activeTab === 'enrollment'
+                ? 'bg-white/20 text-white'
+                : 'bg-primary/10 text-primary'
+            }`}>
+              {enrollmentStats.enrolled}/{enrollmentStats.total} {t('Enrolled')}
+            </span>
+            {enrollmentStats.not_enrolled > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-500 text-white">
+                {enrollmentStats.not_enrolled} {t('Not Enrolled')}
+              </span>
+            )}
+          </button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-between lg:justify-end">
+          <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+            <span>{t('Device')}: <strong className="font-mono text-gray-800 dark:text-gray-200">RS-9W ({enrollmentStats.device_sn || 'RSS20220619704'})</strong></span>
+          </div>
+
+          {enrollmentStats.not_enrolled > 0 && (
+            <Button
+              size="sm"
+              onClick={handleEnrollAll}
+              disabled={isEnrollingAll}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              <UserPlus className="h-4 w-4 mr-1.5" />
+              {isEnrollingAll
+                ? t('Enrolling...')
+                : `${t('Enroll All Unenrolled')} (${enrollmentStats.not_enrolled})`}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════════════════
+          TAB 1: ATTENDANCE PUNCH LOGS
+         ══════════════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'logs' && (
+        <>
+          {/* ── Month + Week Card ── */}
+          {!configurationMissing && (
+            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm mb-4">
+
+              {/* Month navigation */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                <button onClick={() => navigateMonth('prev')} className="p-1.5 rounded-md border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer">
+                  <ChevronLeft className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                </button>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{monthLabel}</h2>
+                  {selectedDate && (
+                    <span className="flex flex-wrap items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
+                      <span className="hidden sm:inline">{t('Showing')}:</span>
+                      <span className="font-medium text-gray-600 dark:text-gray-300">{window.appSettings.formatDateTimeSimple(selectedDate, false)}</span>
+                      {biometricData?.total > 0 && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[11px] font-medium">
+                          {biometricData.total} {t('records')}
+                        </span>
+                      )}
                     </span>
                   )}
-                </span>
-              )}
-            </div>
-            <button onClick={() => navigateMonth('next')} className="p-1.5 rounded-md border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer">
-              <ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-            </button>
-          </div>
+                </div>
+                <button onClick={() => navigateMonth('next')} className="p-1.5 rounded-md border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer">
+                  <ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                </button>
+              </div>
 
-          {/* Week strip */}
-          <div className="flex items-stretch">
-            <button onClick={() => navigateWeek('prev')} className="px-2 sm:px-3 flex items-center justify-center border-r border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer shrink-0">
-              <ChevronLeft className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-            </button>
-            <div className="grid grid-cols-7 flex-1 min-w-0">
-              {(weekDays || []).map((day: any) => {
-                const isSelected = day.date === selectedDate;
-                return (
-                  <button
-                    key={day.date}
-                    onClick={() => handleDayClick(day.date)}
-                    className={`relative flex flex-col items-center justify-center py-2 sm:py-3 cursor-pointer transition-all border-r last:border-r-0 border-gray-100 dark:border-gray-800 ${isSelected ? 'bg-primary text-white'
-                        : day.is_today ? 'bg-primary/10 dark:bg-primary/20 text-primary'
-                          : 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400'
-                      }`}
-                  >
-                    <span className="text-[10px] sm:text-[11px] font-medium uppercase tracking-wide">{day.day_name}</span>
-                    <span className={`mt-0.5 sm:mt-1 text-xs sm:text-sm font-bold w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center rounded-full ${isSelected ? 'bg-white/20 text-white' : day.is_today ? 'bg-primary text-white' : ''
-                      }`}>{day.day}</span>
-                    {isSelected && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-white" />}
-                  </button>
-                );
-              })}
-            </div>
-            <button onClick={() => navigateWeek('next')} className="px-2 sm:px-3 flex items-center justify-center border-l border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer shrink-0">
-              <ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ── Search bar — separate card ── */}
-      {!configurationMissing && (
-        <div className="bg-white dark:bg-gray-900 rounded-lg shadow mb-4 border">
-          <SearchAndFilterBar
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            onSearch={handleSearch}
-            searchPlaceholder={t('Search by employee name or code...')}
-            filters={[
-              {
-                name: 'employee_code',
-                label: t('Employee'),
-                type: 'select',
-                value: selectedEmployeeCode,
-                onChange: setSelectedEmployeeCode,
-                searchable: true,
-                options: [
-                  { value: '_empty_', label: t('All Employees'), disabled: true },
-                  ...(employees || []).map((emp: any) => ({ value: emp.emp_code, label: emp.name }))
-                ]
-              }
-            ]}
-            showFilters={showFilters}
-            setShowFilters={setShowFilters}
-            hasActiveFilters={hasActiveFilters}
-            activeFilterCount={activeFilterCount}
-            onResetFilters={handleResetFilters}
-          />
-        </div>
-      )}
-
-      {/* ── Table card ── */}
-      <div className="bg-white dark:bg-gray-900 rounded-lg shadow overflow-hidden">
-        {configurationMissing ? (
-          <div className="px-6 py-12 text-center">
-            <div className="max-w-md mx-auto">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">{t('Configuration Required')}</h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">{t('Please configure ZKTeco API settings to fetch biometric attendance data.')}</p>
-              <div className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
-                <p>{t('Required settings:')}</p>
-                <ul className="list-disc list-inside space-y-1">
-                  <li>{t('ZKTeco API URL')}</li>
-                  <li>{t('Username')}</li>
-                  <li>{t('Password')}</li>
-                  <li>{t('Auth Token')}</li>
-                </ul>
+              {/* Week strip */}
+              <div className="flex items-stretch">
+                <button onClick={() => navigateWeek('prev')} className="px-2 sm:px-3 flex items-center justify-center border-r border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer shrink-0">
+                  <ChevronLeft className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                </button>
+                <div className="grid grid-cols-7 flex-1 min-w-0">
+                  {(weekDays || []).map((day: any) => {
+                    const isSelected = day.date === selectedDate;
+                    return (
+                      <button
+                        key={day.date}
+                        onClick={() => handleDayClick(day.date)}
+                        className={`relative flex flex-col items-center justify-center py-2 sm:py-3 cursor-pointer transition-all border-r last:border-r-0 border-gray-100 dark:border-gray-800 ${isSelected ? 'bg-primary text-white'
+                            : day.is_today ? 'bg-primary/10 dark:bg-primary/20 text-primary'
+                              : 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400'
+                          }`}
+                      >
+                        <span className="text-[10px] sm:text-[11px] font-medium uppercase tracking-wide">{day.day_name}</span>
+                        <span className={`mt-0.5 sm:mt-1 text-xs sm:text-sm font-bold w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center rounded-full ${isSelected ? 'bg-white/20 text-white' : day.is_today ? 'bg-primary text-white' : ''
+                          }`}>{day.day}</span>
+                        {isSelected && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-white" />}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button onClick={() => navigateWeek('next')} className="px-2 sm:px-3 flex items-center justify-center border-l border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer shrink-0">
+                  <ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                </button>
               </div>
             </div>
-          </div>
-        ) : (
-          <>
+          )}
+
+          {/* ── Search bar — separate card ── */}
+          {!configurationMissing && (
+            <div className="bg-white dark:bg-gray-900 rounded-lg shadow mb-4 border">
+              <SearchAndFilterBar
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+                onSearch={handleSearch}
+                searchPlaceholder={t('Search by employee name or code...')}
+                filters={[
+                  {
+                    name: 'employee_code',
+                    label: t('Employee'),
+                    type: 'select',
+                    value: selectedEmployeeCode,
+                    onChange: setSelectedEmployeeCode,
+                    searchable: true,
+                    options: [
+                      { value: '_empty_', label: t('All Employees'), disabled: true },
+                      ...(employees || []).map((emp: any) => ({ value: emp.emp_code, label: emp.name }))
+                    ]
+                  }
+                ]}
+                showFilters={showFilters}
+                setShowFilters={setShowFilters}
+                hasActiveFilters={hasActiveFilters}
+                activeFilterCount={activeFilterCount}
+                onResetFilters={handleResetFilters}
+              />
+            </div>
+          )}
+
+          {/* ── Table card ── */}
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow overflow-hidden">
             <CrudTable
               columns={columns}
               actions={actions}
@@ -461,9 +654,187 @@ export default function BiometricAttendance() {
                 router.get(route('hr.biometric-attendance.index'), buildParams({ per_page: value, page: 1 }), { preserveState: true, preserveScroll: true });
               }}
             />
-          </>
-        )}
-      </div>
+          </div>
+        </>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════════
+          TAB 2: EMPLOYEE BIOMETRIC DEVICE ENROLLMENT STATUS & ENROLL ACTION
+         ══════════════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'enrollment' && (
+        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+          {/* Filter & Search Bar */}
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setEnrollmentFilter('all')}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer transition-colors ${
+                  enrollmentFilter === 'all'
+                    ? 'bg-primary text-white'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
+                }`}
+              >
+                {t('All Employees')} ({enrollmentStats.total})
+              </button>
+              <button
+                type="button"
+                onClick={() => setEnrollmentFilter('not_enrolled')}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer transition-colors ${
+                  enrollmentFilter === 'not_enrolled'
+                    ? 'bg-amber-600 text-white'
+                    : 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100'
+                }`}
+              >
+                {t('Not Enrolled')} ({enrollmentStats.not_enrolled})
+              </button>
+              <button
+                type="button"
+                onClick={() => setEnrollmentFilter('enrolled')}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer transition-colors ${
+                  enrollmentFilter === 'enrolled'
+                    ? 'bg-green-600 text-white'
+                    : 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 hover:bg-green-100'
+                }`}
+              >
+                {t('Enrolled on Device')} ({enrollmentStats.enrolled})
+              </button>
+            </div>
+
+            <div className="relative w-full sm:w-72">
+              <Search className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Input
+                type="text"
+                value={enrollmentSearch}
+                onChange={(e) => setEnrollmentSearch(e.target.value)}
+                placeholder={t('Search employee name, code, dept...')}
+                className="pl-9 h-9 text-sm"
+              />
+            </div>
+          </div>
+
+          {/* Employees Enrollment Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="text-xs uppercase bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                <tr>
+                  <th className="px-4 py-3">{t('Employee')}</th>
+                  <th className="px-4 py-3">{t('Department / Designation')}</th>
+                  <th className="px-4 py-3">{t('Biometric Employee Code')}</th>
+                  <th className="px-4 py-3">{t('Device Serial No.')}</th>
+                  <th className="px-4 py-3">{t('Biometric Status')}</th>
+                  <th className="px-4 py-3 text-right">{t('Action')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {filteredEnrollments.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                      {t('No employees found matching the selected filter.')}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredEnrollments.map((emp: any) => {
+                    const isEnrolled = emp.is_biometric_enrolled;
+                    const codeValue = customCodes[emp.employee_id] !== undefined
+                      ? customCodes[emp.employee_id]
+                      : (emp.employee_code || '');
+
+                    return (
+                      <tr key={emp.employee_id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-white overflow-hidden shrink-0">
+                              {emp.avatar
+                                ? <img src={emp.avatar} alt={emp.name} className="h-full w-full object-cover" />
+                                : getInitials(emp.name || '')}
+                            </div>
+                            <div>
+                              <div className="font-medium text-gray-900 dark:text-gray-100">{emp.name}</div>
+                              <div className="text-xs text-muted-foreground">{emp.system_employee_id} {emp.email ? `• ${emp.email}` : ''}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="text-sm text-gray-800 dark:text-gray-200">{emp.designation || '-'}</div>
+                          <div className="text-xs text-muted-foreground">{emp.department || '-'}</div>
+                        </td>
+                        <td className="px-4 py-3">
+                          {isEnrolled && emp.employee_code ? (
+                            <span className="font-mono font-semibold text-sm px-2.5 py-1 rounded bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
+                              {emp.employee_code}
+                            </span>
+                          ) : (
+                            <Input
+                              type="text"
+                              value={codeValue}
+                              onChange={(e) => {
+                                const cleaned = e.target.value.replace(/\D/g, '').slice(0, 9);
+                                setCustomCodes(prev => ({ ...prev, [emp.employee_id]: cleaned }));
+                              }}
+                              placeholder={t('Auto (4-9 digits)')}
+                              className="w-36 h-8 font-mono text-xs"
+                            />
+                          )}
+                        </td>
+                        <td className="px-4 py-3 font-mono text-xs text-gray-600 dark:text-gray-400">
+                          {emp.biometric_device_sn || enrollmentStats.device_sn || 'RSS20220619704'}
+                        </td>
+                        <td className="px-4 py-3">
+                          {isEnrolled ? (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="inline-flex items-center gap-1.5 w-fit px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                {t('Enrolled on Device')}
+                              </span>
+                              {emp.biometric_enrolled_at && (
+                                <span className="text-[11px] text-muted-foreground">
+                                  {emp.biometric_enrolled_at}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                              <XCircle className="h-3.5 w-3.5" />
+                              {t('Not Enrolled')}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {!isEnrolled ? (
+                            <Button
+                              size="sm"
+                              onClick={() => handleEnrollEmployee(emp)}
+                              disabled={enrollingId === emp.employee_id}
+                              className="bg-primary hover:bg-primary/90 text-white"
+                            >
+                              <UserPlus className="h-3.5 w-3.5 mr-1.5" />
+                              {enrollingId === emp.employee_id
+                                ? t('Enrolling...')
+                                : t('Enroll in Biometric Device')}
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEnrollEmployee(emp)}
+                              disabled={enrollingId === emp.employee_id}
+                              className="text-xs"
+                            >
+                              <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${enrollingId === emp.employee_id ? 'animate-spin' : ''}`} />
+                              {t('Re-sync to Device')}
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Details Modal */}
       <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>

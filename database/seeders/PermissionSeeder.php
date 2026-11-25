@@ -910,7 +910,35 @@ class PermissionSeeder extends Seeder
             ['name' => 'manage-own-biometric-attendance', 'module' => 'biometric_attendance', 'label' => 'Manage Own Biometric Attendance', 'description' => 'Manage Limited Biometric Attendance that is created by own'],
             ['name' => 'view-biometric-attendance', 'module' => 'biometric_attendance', 'label' => 'View Biometric Attendance', 'description' => 'View Biometric Attendance'],
             ['name' => 'sync-biometric-attendance', 'module' => 'biometric_attendance', 'label' => 'Sync Biometric Attendance', 'description' => 'Can sync biometric attendance data'],
+            ['name' => 'reprocess-biometric-punches', 'module' => 'biometric_attendance', 'label' => 'Reprocess Biometric Punches', 'description' => 'Can retry failed biometric sync logs and reprocess attendance calculations'],
             ['name' => 'manage-biomatric-attedance-settings', 'module' => 'biometric_attendance', 'label' => 'Manage Biometric Attendance Setting', 'description' => 'Manage Biometric Attendance Setting'],
+
+            // Biometric Devices
+            ['name' => 'manage-biometric-devices', 'module' => 'biometric_devices', 'label' => 'Manage Biometric Devices', 'description' => 'Can manage biometric devices'],
+            ['name' => 'manage-any-biometric-devices', 'module' => 'biometric_devices', 'label' => 'Manage All Biometric Devices', 'description' => 'Manage Any Biometric Devices'],
+            ['name' => 'manage-own-biometric-devices', 'module' => 'biometric_devices', 'label' => 'Manage Own Biometric Devices', 'description' => 'Manage Limited Biometric Devices that is created by own'],
+            ['name' => 'view-biometric-devices', 'module' => 'biometric_devices', 'label' => 'View Biometric Devices', 'description' => 'View Biometric Devices'],
+            ['name' => 'create-biometric-devices', 'module' => 'biometric_devices', 'label' => 'Create Biometric Devices', 'description' => 'Can create biometric devices'],
+            ['name' => 'edit-biometric-devices', 'module' => 'biometric_devices', 'label' => 'Edit Biometric Devices', 'description' => 'Can edit biometric devices'],
+            ['name' => 'delete-biometric-devices', 'module' => 'biometric_devices', 'label' => 'Delete Biometric Devices', 'description' => 'Can delete biometric devices'],
+            ['name' => 'sync-biometric-devices', 'module' => 'biometric_devices', 'label' => 'Sync Biometric Devices', 'description' => 'Can check connectivity, sync time, sync employees and fetch logs'],
+            ['name' => 'control-biometric-devices', 'module' => 'biometric_devices', 'label' => 'Control Biometric Devices', 'description' => 'Can restart devices, clear device logs and remove users from devices'],
+
+            // Biometric Agents
+            ['name' => 'manage-biometric-agents', 'module' => 'biometric_agents', 'label' => 'Manage Biometric Agents', 'description' => 'Can manage local biometric communication agents'],
+            ['name' => 'manage-any-biometric-agents', 'module' => 'biometric_agents', 'label' => 'Manage All Biometric Agents', 'description' => 'Manage any biometric agents in the company'],
+            ['name' => 'manage-own-biometric-agents', 'module' => 'biometric_agents', 'label' => 'Manage Own Biometric Agents', 'description' => 'Manage biometric agents created by self'],
+            ['name' => 'view-biometric-agents', 'module' => 'biometric_agents', 'label' => 'View Biometric Agents', 'description' => 'Can view biometric agent details and health'],
+            ['name' => 'create-biometric-agents', 'module' => 'biometric_agents', 'label' => 'Create Biometric Agents', 'description' => 'Can register and provision biometric agents'],
+            ['name' => 'edit-biometric-agents', 'module' => 'biometric_agents', 'label' => 'Edit Biometric Agents', 'description' => 'Can edit, revoke and rotate biometric agent credentials'],
+            ['name' => 'delete-biometric-agents', 'module' => 'biometric_agents', 'label' => 'Delete Biometric Agents', 'description' => 'Can delete biometric agents'],
+
+            // Biometric Enrollments
+            ['name' => 'manage-biometric-enrollments', 'module' => 'biometric_enrollments', 'label' => 'Manage Biometric Enrollments', 'description' => 'Can view and manage employee biometric enrollments'],
+            ['name' => 'view-biometric-enrollments', 'module' => 'biometric_enrollments', 'label' => 'View Biometric Enrollments', 'description' => 'Can view employee biometric enrollment status and device mappings'],
+            ['name' => 'enroll-biometric-employees', 'module' => 'biometric_enrollments', 'label' => 'Enroll Biometric Employees', 'description' => 'Can start enrollment and re-enroll employees on biometric devices'],
+            ['name' => 'remove-biometric-enrollments', 'module' => 'biometric_enrollments', 'label' => 'Remove Biometric Enrollments', 'description' => 'Can remove biometric registrations from devices'],
+            ['name' => 'sync-biometric-enrollments', 'module' => 'biometric_enrollments', 'label' => 'Sync Biometric Enrollments', 'description' => 'Can synchronize employee enrollments across multiple authorized devices'],
 
             // Ip Restriction
             ['name' => 'manage-ip-restriction-settings', 'module' => 'ip_restriction', 'label' => 'Manage Ip Restriction Settings', 'description' => 'Manage Ip Restriction Settings'],

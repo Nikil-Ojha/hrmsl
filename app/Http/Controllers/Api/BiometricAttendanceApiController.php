@@ -11,6 +11,12 @@ use App\Models\Employee;
 use App\Models\Shift;
 use App\Models\User;
 use App\Services\BiometricDeviceService;
+use App\Biometric\Services\DeviceGateway;
+use App\Biometric\Enums\PunchSource;
+use App\Biometric\Services\DeviceUserDirectory;
+use App\Biometric\Services\PunchSynchronizationService;
+use App\Biometric\Protocols\ZkAdmsAdapter;
+use App\Models\BiometricCommand;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -75,8 +81,37 @@ class BiometricAttendanceApiController extends Controller
             'raw_length' => strlen($rawBody),
         ]);
 
+        // Registered device (Biometric Devices module): heartbeat + command acks
+        $registeredDevice = $this->gateway()->touch('fkweb', $deviceSn, $request->ip());
+
+        if ($requestCode === 'send_cmd_result' && $registeredDevice && BiometricCommand::idFromWireId($transId)) {
+            $returnCode = (string) $request->header('cmd_return_code', '');
+            $this->gateway()->commands()->acknowledge(
+                $registeredDevice,
+                $transId,
+                strtoupper($returnCode) === 'OK',
+                $returnCode ?: null,
+                $this->extractEmbeddedJson($rawBody)
+            );
+
+            return response('', 200)
+                ->header('response_code', 'OK')
+                ->header('trans_id', $transId);
+        }
+
         // Heartbeat / command polling from machine
         if ($requestCode === 'receive_cmd') {
+            if ($registeredDevice) {
+                $next = $this->gateway()->commands()->nextFor($registeredDevice, 1)->first();
+                if ($next) {
+                    return response($next['encoded']->body, 200)
+                        ->header('response_code', 'OK')
+                        ->header('trans_id', (string) $next['command']->wireId())
+                        ->header('cmd_code', (string) $next['encoded']->code)
+                        ->header('Content-Type', 'application/octet-stream');
+                }
+            }
+
             $pendingCmd = BiometricDeviceCommand::whereIn('status', ['pending'])
                 ->where(function ($q) use ($deviceSn) {
                     $q->where('device_sn', $deviceSn)
@@ -120,8 +155,19 @@ class BiometricAttendanceApiController extends Controller
 
             $logDateTime = $this->parseMachineDateTime($ioTimeRaw);
 
-            if (!empty($empCode) && $logDateTime) {
-                $this->recordPunch($empCode, $logDateTime, $deviceSn, now()->format('Y-m-d H:i:s'));
+            if (!empty($empCode) && $ioTimeRaw !== '') {
+                if ($registeredDevice) {
+                    app(PunchSynchronizationService::class)->ingestBatchForDevice($registeredDevice, [[
+                        'device_user_id' => $empCode,
+                        'punched_at' => $ioTimeRaw,
+                        'punch_state' => $jsonData['io_mode'] ?? $jsonData['punch_state'] ?? null,
+                        'verify_mode' => $jsonData['verify_mode'] ?? null,
+                        'original_device_log_id' => isset($jsonData['log_id']) ? (string) $jsonData['log_id'] : null,
+                        'raw_metadata' => ['trans_id' => $transId],
+                    ]], PunchSource::FkWebPush, null, 'device');
+                } elseif ($logDateTime) {
+                    $this->recordPunch($empCode, $logDateTime, $deviceSn, now()->format('Y-m-d H:i:s'));
+                }
             }
         }
 
@@ -147,6 +193,9 @@ class BiometricAttendanceApiController extends Controller
             'ip' => $request->ip(),
         ]);
 
+        // Registered device (Biometric Devices module): heartbeat
+        $registeredDevice = $this->gateway()->touch('zk_adms', $deviceSn, $request->ip());
+
         // 1. Device Handshake / Initialization (GET /iclock/cdata?SN=RSS20220619704&options=all...)
         if ($request->isMethod('GET')) {
             $response = implode("\r\n", [
@@ -171,33 +220,65 @@ class BiometricAttendanceApiController extends Controller
         $rawBody = trim((string) $request->getContent());
         $processedCount = 0;
 
+        // User records uploaded by a registered device (OPERLOG / USERINFO tables, e.g. after DATA QUERY USERINFO)
+        if ($registeredDevice && $rawBody !== '' && preg_match('/^USER\s/mi', $rawBody)) {
+            $users = ZkAdmsAdapter::parseUsers($rawBody);
+            app(DeviceUserDirectory::class)->upsertMany($registeredDevice, $users, 'device_report');
+
+            if (in_array($table, ['OPERLOG', 'USERINFO'], true)) {
+                return response('OK: ' . count($users), 200)->header('Content-Type', 'text/plain');
+            }
+        }
+
         if (!empty($rawBody) && ($table === 'ATTLOG' || $table === '')) {
             $lines = preg_split('/\r\n|\r|\n/', $rawBody);
 
+            $canonicalEvents = [];
             foreach ($lines as $line) {
                 $line = trim($line);
                 if (empty($line) || stripos($line, 'OPLOG') === 0 || stripos($line, 'USER') === 0) {
                     continue;
                 }
 
-                // Format 1: Tab-separated: PIN \t YYYY-MM-DD HH:MM:SS \t Status \t Verify ...
+                // Format 1: Tab-separated: PIN \t YYYY-MM-DD HH:MM:SS \t Status \t Verify \t WorkCode
                 $parts = preg_split('/\t+/', $line);
                 if (count($parts) < 2) {
-                    // Format 2: Space-separated: PIN YYYY-MM-DD HH:MM:SS Status Verify ...
-                    if (preg_match('/^(\S+)\s+(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})/', $line, $matches)) {
-                        $parts = [$matches[1], $matches[2]];
+                    if (preg_match('/^(\S+)\s+(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})(?:\s+(\S+))?(?:\s+(\S+))?/', $line, $matches)) {
+                        $parts = array_slice($matches, 1);
                     }
                 }
 
                 if (count($parts) >= 2) {
                     $empCode = trim($parts[0]);
-                    $logDateTime = $this->parseMachineDateTime(trim($parts[1]));
+                    $rawTs = trim($parts[1]);
 
-                    if (!empty($empCode) && $logDateTime) {
-                        $this->recordPunch($empCode, $logDateTime, $deviceSn, now()->format('Y-m-d H:i:s'));
+                    if ($registeredDevice && !empty($empCode) && $rawTs !== '') {
+                        $canonicalEvents[] = [
+                            'device_user_id' => $empCode,
+                            'punched_at' => $rawTs,
+                            'punch_state' => isset($parts[2]) ? trim($parts[2]) : null,
+                            'verify_mode' => isset($parts[3]) ? trim($parts[3]) : null,
+                            'work_code' => isset($parts[4]) ? trim($parts[4]) : null,
+                        ];
                         $processedCount++;
+                    } else {
+                        $logDateTime = $this->parseMachineDateTime($rawTs);
+                        if (!empty($empCode) && $logDateTime) {
+                            $this->recordPunch($empCode, $logDateTime, $deviceSn, now()->format('Y-m-d H:i:s'));
+                            $processedCount++;
+                        }
                     }
                 }
+            }
+
+            if ($registeredDevice && !empty($canonicalEvents)) {
+                app(PunchSynchronizationService::class)->ingestBatchForDevice(
+                    $registeredDevice,
+                    $canonicalEvents,
+                    PunchSource::AdmsPush,
+                    null,
+                    'device'
+                );
             }
 
             return response("OK: {$processedCount}", 200)->header('Content-Type', 'text/plain');
@@ -214,6 +295,15 @@ class BiometricAttendanceApiController extends Controller
     {
         $deviceSn = (string) ($request->query('SN') ?? $request->query('sn') ?? BiometricDeviceService::DEFAULT_DEVICE_SN);
 
+        // Commands queued through the Biometric Devices module (wire ids are offset).
+        $lines = [];
+        $registeredDevice = $this->gateway()->touch('zk_adms', $deviceSn, $request->ip());
+        if ($registeredDevice) {
+            foreach ($this->gateway()->commands()->nextFor($registeredDevice) as $item) {
+                $lines[] = 'C:' . $item['command']->wireId() . ':' . $item['encoded']->body;
+            }
+        }
+
         $pendingCommands = BiometricDeviceCommand::where('status', 'pending')
             ->where(function ($q) use ($deviceSn) {
                 $q->where('device_sn', $deviceSn)
@@ -223,8 +313,7 @@ class BiometricAttendanceApiController extends Controller
             ->limit(10)
             ->get();
 
-        if ($pendingCommands->isNotEmpty()) {
-            $lines = [];
+        if ($pendingCommands->isNotEmpty() || !empty($lines)) {
             foreach ($pendingCommands as $cmd) {
                 $lines[] = "C:{$cmd->id}:{$cmd->adms_command}";
                 $cmd->update([
@@ -246,10 +335,31 @@ class BiometricAttendanceApiController extends Controller
     public function handleIclockDeviceCmd(Request $request)
     {
         $rawBody = trim((string) $request->getContent());
+        $deviceSn = (string) ($request->query('SN') ?? $request->query('sn') ?? '');
+        $registeredDevice = $deviceSn !== '' ? $this->gateway()->touch('zk_adms', $deviceSn, $request->ip()) : null;
+
         if (!empty($rawBody)) {
             $lines = preg_split('/\r\n|\r|\n/', $rawBody);
+
             foreach ($lines as $line) {
                 parse_str(trim($line), $params);
+
+                // Command from the Biometric Devices module
+                if (!empty($params['ID']) && BiometricCommand::idFromWireId($params['ID'])) {
+                    if ($registeredDevice) {
+                        $returnCode = (string) ($params['Return'] ?? '');
+                        // Protocol-specific interpretation (INFO replies etc.) lives in ZKTecoProvider / ZkAdmsAdapter.
+                        $this->gateway()->commands()->acknowledge(
+                            $registeredDevice,
+                            $params['ID'],
+                            ZkAdmsAdapter::isSuccessCode($returnCode),
+                            $returnCode,
+                            ['raw' => $rawBody, 'cmd' => $params['CMD'] ?? null]
+                        );
+                    }
+                    continue;
+                }
+
                 if (!empty($params['ID'])) {
                     $cmd = BiometricDeviceCommand::find((int) $params['ID']);
                     if ($cmd) {
@@ -420,6 +530,12 @@ class BiometricAttendanceApiController extends Controller
                 $validated['downloaded_at'] ?? null,
                 $validated['log_time']
             );
+        }
+
+        foreach (collect($savedLogs)->groupBy('device_sn') as $sn => $logsForDevice) {
+            if ($registered = $this->gateway()->touch('generic_http', (string) $sn, $request->ip())) {
+                $this->gateway()->activity()->logsReceived($registered, $logsForDevice->count());
+            }
         }
 
         if (!$isBatch) {
@@ -793,6 +909,11 @@ class BiometricAttendanceApiController extends Controller
             return true;
         }
         return array_is_list($all) && isset($all[0]) && is_array($all[0]);
+    }
+
+    protected function gateway(): DeviceGateway
+    {
+        return app(DeviceGateway::class);
     }
 
     protected function getDefaultCreatorId(): ?int

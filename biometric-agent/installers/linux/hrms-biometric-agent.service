@@ -1,0 +1,20 @@
+[Unit]
+Description=HRMS Local Biometric Device Communication Agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hrms-agent
+Group=hrms-agent
+WorkingDirectory=/opt/hrms-biometric-agent
+ExecStart=/usr/bin/python3 -m hrms_agent --data-dir /var/lib/hrms-biometric-agent run
+Restart=always
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/hrms-biometric-agent
+
+[Install]
+WantedBy=multi-user.target

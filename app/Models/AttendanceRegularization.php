@@ -69,12 +69,25 @@ class AttendanceRegularization extends BaseModel
     {
         if ($this->status === 'approved' && $this->attendanceRecord) {
             // Update the attendance record with requested times
+            $dateStr = $this->date ? \Carbon\Carbon::parse($this->date)->toDateString() : \Carbon\Carbon::parse($this->attendanceRecord->date)->toDateString();
+            $inAt = $this->requested_clock_in ? \Carbon\Carbon::parse($dateStr . ' ' . $this->requested_clock_in) : null;
+            $outAt = $this->requested_clock_out ? \Carbon\Carbon::parse($dateStr . ' ' . $this->requested_clock_out) : null;
+            if ($inAt && $outAt && $outAt->lt($inAt)) {
+                $outAt->addDay();
+            }
+
             $this->attendanceRecord->update([
                 'clock_in' => $this->requested_clock_in,
+                'clock_in_at' => $inAt,
                 'clock_out' => $this->requested_clock_out,
+                'clock_out_at' => $outAt,
+                'is_missing_clock_out' => $this->requested_clock_out ? false : $this->attendanceRecord->is_missing_clock_out,
+                'is_manual_override' => true,
+                'source' => 'regularization',
             ]);
 
             // Process complete attendance calculation with shift and policy
+            $this->attendanceRecord->refresh();
             $this->attendanceRecord->processAttendance();
         }
     }

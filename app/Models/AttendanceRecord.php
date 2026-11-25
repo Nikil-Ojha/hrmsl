@@ -12,21 +12,31 @@ class AttendanceRecord extends BaseModel
     protected $fillable = [
         'employee_id',
         'biometric_id',
+        'first_punch_id',
+        'last_punch_id',
+        'punch_count',
         'shift_id',
         'attendance_policy_id',
         'date',
         'clock_in',
+        'clock_in_at',
         'clock_out',
+        'clock_out_at',
         'total_hours',
         'break_hours',
         'overtime_hours',
         'overtime_amount',
         'is_late',
+        'late_minutes',
         'is_early_departure',
+        'early_departure_minutes',
+        'is_missing_clock_out',
         'is_absent',
         'is_holiday',
         'is_weekend',
         'status',
+        'source',
+        'is_manual_override',
         'notes',
         'created_by',
     ];
@@ -37,84 +47,164 @@ class AttendanceRecord extends BaseModel
         'overtime_hours' => 'decimal:2',
         'overtime_amount' => 'decimal:2',
         'is_late' => 'boolean',
+        'late_minutes' => 'integer',
         'is_early_departure' => 'boolean',
+        'early_departure_minutes' => 'integer',
+        'is_missing_clock_out' => 'boolean',
         'is_absent' => 'boolean',
         'is_holiday' => 'boolean',
         'is_weekend' => 'boolean',
+        'is_manual_override' => 'boolean',
+        'punch_count' => 'integer',
+        'clock_in_at' => 'datetime',
+        'clock_out_at' => 'datetime',
     ];
 
-    /**
-     * Get the employee.
-     */
     public function employee()
     {
         return $this->belongsTo(User::class, 'employee_id');
     }
 
-    /**
-     * Get the shift.
-     */
     public function shift()
     {
         return $this->belongsTo(Shift::class);
     }
 
-    /**
-     * Get the attendance policy.
-     */
     public function attendancePolicy()
     {
         return $this->belongsTo(AttendancePolicy::class);
     }
 
-    /**
-     * Get the user who created the record.
-     */
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function biometricPunches()
+    {
+        return $this->hasMany(BiometricPunch::class, 'attendance_record_id')->orderBy('punched_at_utc');
+    }
+
     /**
-     * Calculate total working hours.
+     * Resolve shift-anchored start and end datetimes for this attendance date.
+     *
+     * @return array{0: Carbon, 1: Carbon}|null [shiftStart, shiftEnd]
+     */
+    public function shiftWindow(): ?array
+    {
+        if (!$this->shift || !$this->shift->start_time || !$this->shift->end_time) {
+            return null;
+        }
+
+        $dateStr = $this->date ? Carbon::parse($this->date)->toDateString() : Carbon::today()->toDateString();
+        $start = Carbon::parse($dateStr . ' ' . $this->shift->start_time);
+        $end = Carbon::parse($dateStr . ' ' . $this->shift->end_time);
+
+        if ($this->shift->is_night_shift && $end->lte($start)) {
+            $end->addDay();
+        }
+
+        return [$start, $end];
+    }
+
+    /**
+     * Resolve shift-anchored actual clock-in datetime (handles post-midnight
+     * late arrival on overnight shifts accurately!).
+     */
+    public function resolvedClockInDateTime(): ?Carbon
+    {
+        if ($this->clock_in_at) {
+            return Carbon::parse($this->clock_in_at);
+        }
+
+        $rawIn = $this->getRawOriginal('clock_in') ?: $this->clock_in;
+        if (!$rawIn) {
+            return null;
+        }
+
+        $dateStr = $this->date ? Carbon::parse($this->date)->toDateString() : Carbon::today()->toDateString();
+        $clockIn = Carbon::parse($dateStr . ' ' . $rawIn);
+
+        // Overnight shift: e.g. shift 22:00->06:00, employee arrives after midnight at 00:15
+        if ($window = $this->shiftWindow()) {
+            [$shiftStart, $shiftEnd] = $window;
+            if ($this->shift->is_night_shift && $shiftEnd->gt($shiftStart->copy()->endOfDay())) {
+                $nextDayIn = $clockIn->copy()->addDay();
+                if ($nextDayIn->lte($shiftEnd) && $clockIn->lt($shiftStart->copy()->subHours(6))) {
+                    return $nextDayIn;
+                }
+            }
+        }
+
+        return $clockIn;
+    }
+
+    /**
+     * Resolve shift-anchored actual clock-out datetime (handles both next-day
+     * clock-out AND pre-midnight early departure on overnight shifts!).
+     */
+    public function resolvedClockOutDateTime(?Carbon $clockIn = null): ?Carbon
+    {
+        if ($this->clock_out_at) {
+            return Carbon::parse($this->clock_out_at);
+        }
+
+        $rawOut = $this->getRawOriginal('clock_out') ?: $this->clock_out;
+        if (!$rawOut) {
+            return null;
+        }
+
+        $dateStr = $this->date ? Carbon::parse($this->date)->toDateString() : Carbon::today()->toDateString();
+        $clockOut = Carbon::parse($dateStr . ' ' . $rawOut);
+        $clockIn = $clockIn ?? $this->resolvedClockInDateTime();
+
+        if ($clockIn && $clockOut->lt($clockIn)) {
+            $clockOut->addDay();
+        }
+
+        return $clockOut;
+    }
+
+    /**
+     * Calculate total working hours (fully overnight-shift & break-window aware).
      */
     public function calculateTotalHours()
     {
-        if ($this->clock_in && $this->clock_out) {
-            $clockIn = Carbon::parse($this->clock_in);
-            $clockOut = Carbon::parse($this->clock_out);
+        $clockIn = $this->resolvedClockInDateTime();
+        $clockOut = $this->resolvedClockOutDateTime($clockIn);
 
-            // Handle next day clock out (night shifts)
-            if ($clockOut->lt($clockIn)) {
-                $clockOut->addDay();
-            }
-
+        if ($clockIn && $clockOut) {
             $totalMinutes = abs($clockOut->diffInMinutes($clockIn));
 
-            // Use shift's break times for accurate calculation
             $breakMinutes = 0;
             if ($this->shift && $this->shift->break_start_time && $this->shift->break_end_time) {
-                $breakStart = Carbon::parse($this->shift->break_start_time);
-                $breakEnd = Carbon::parse($this->shift->break_end_time);
+                $dateStr = $this->date ? Carbon::parse($this->date)->toDateString() : Carbon::today()->toDateString();
+                $breakStart = Carbon::parse($dateStr . ' ' . $this->shift->break_start_time);
+                $breakEnd = Carbon::parse($dateStr . ' ' . $this->shift->break_end_time);
 
-                // Handle next day break times for night shifts
+                // For overnight shifts whose break starts after midnight (e.g. 01:00–01:30 on a 22:00–06:00 shift)
+                if ($window = $this->shiftWindow()) {
+                    [$shiftStart] = $window;
+                    if ($this->shift->is_night_shift && $breakStart->lt($shiftStart->copy()->subHours(6))) {
+                        $breakStart->addDay();
+                        $breakEnd->addDay();
+                    }
+                }
                 if ($breakEnd->lt($breakStart)) {
                     $breakEnd->addDay();
                 }
 
-                // Only deduct break if employee worked through the break period
-                if ($clockIn->lte($breakStart) && $clockOut->gte($breakEnd)) {
-                    // Worked through entire break - deduct full break
-                    $breakMinutes = $this->shift->break_duration;
-                } elseif ($clockIn->lte($breakStart) && $clockOut->gt($breakStart) && $clockOut->lte($breakEnd)) {
-                    // Left during break - deduct time spent on break
-                    $breakMinutes = abs($clockOut->diffInMinutes($breakStart));
-                } elseif ($clockIn->gt($breakStart) && $clockIn->lt($breakEnd) && $clockOut->gte($breakEnd)) {
-                    // Came during break - deduct partial break (missed part of break)
-                    $breakMinutes = abs($breakEnd->diffInMinutes($clockIn));
-                } elseif ($clockIn->gt($breakStart) && $clockOut->lt($breakEnd)) {
-                    // Came and left during break - no break deduction
-                    $breakMinutes = 0;
+                // Exact overlap between [clockIn, clockOut] and [breakStart, breakEnd]
+                $overlapStart = $clockIn->gt($breakStart) ? $clockIn : $breakStart;
+                $overlapEnd = $clockOut->lt($breakEnd) ? $clockOut : $breakEnd;
+                if ($overlapEnd->gt($overlapStart)) {
+                    $overlapMinutes = $overlapStart->diffInMinutes($overlapEnd);
+                    // Cap to configured shift break_duration if employee worked the full break
+                    if ($clockIn->lte($breakStart) && $clockOut->gte($breakEnd) && $this->shift->break_duration > 0) {
+                        $breakMinutes = (int) $this->shift->break_duration;
+                    } else {
+                        $breakMinutes = (int) $overlapMinutes;
+                    }
                 }
             }
 
@@ -132,26 +222,51 @@ class AttendanceRecord extends BaseModel
     }
 
     /**
-     * Check if employee is late.
+     * Check if employee is late (overnight-shift aware + shift grace fallback).
      */
     public function checkLateArrival()
     {
-        if ($this->shift && $this->clock_in && $this->attendancePolicy) {
-            $expectedTime = $this->shift->start_time;
-            $this->is_late = $this->attendancePolicy->isLateArrival($this->clock_in, $expectedTime);
+        $clockIn = $this->resolvedClockInDateTime();
+        $window = $this->shiftWindow();
+
+        if ($clockIn && $window) {
+            [$shiftStart] = $window;
+
+            if ($this->attendancePolicy) {
+                $mins = $this->attendancePolicy->lateMinutes($clockIn, $shiftStart);
+            } else {
+                $grace = (int) ($this->shift->grace_period ?? 0);
+                $deadline = $shiftStart->copy()->addMinutes($grace);
+                $mins = $clockIn->gt($deadline) ? (int) max(1, $shiftStart->diffInMinutes($clockIn)) : 0;
+            }
+
+            $this->late_minutes = $mins;
+            $this->is_late = $mins > 0;
+        } else {
+            $this->late_minutes = 0;
+            $this->is_late = false;
         }
 
         return $this->is_late;
     }
 
     /**
-     * Check if employee left early.
+     * Check if employee left early (overnight-shift aware).
      */
     public function checkEarlyDeparture()
     {
-        if ($this->shift && $this->clock_out && $this->attendancePolicy) {
-            $expectedTime = $this->shift->end_time;
-            $this->is_early_departure = $this->attendancePolicy->isEarlyDeparture($this->clock_out, $expectedTime);
+        $clockIn = $this->resolvedClockInDateTime();
+        $clockOut = $this->resolvedClockOutDateTime($clockIn);
+        $window = $this->shiftWindow();
+
+        if ($clockOut && $window && $this->attendancePolicy) {
+            [, $shiftEnd] = $window;
+            $mins = $this->attendancePolicy->earlyDepartureMinutes($clockOut, $shiftEnd);
+            $this->early_departure_minutes = $mins;
+            $this->is_early_departure = $mins > 0;
+        } else {
+            $this->early_departure_minutes = 0;
+            $this->is_early_departure = false;
         }
 
         return $this->is_early_departure;
@@ -159,17 +274,31 @@ class AttendanceRecord extends BaseModel
 
     /**
      * Process complete attendance - calculate everything automatically.
+     *
+     * Optional $pairedWorkHours / $pairedBreakHours allow `in_out_pairs`
+     * multi-punch mode to pass exact summed working/break durations while
+     * reusing overtime, grace, late/early and status calculation cleanly.
      */
-    public function processAttendance()
+    public function processAttendance(?float $pairedWorkHours = null, ?float $pairedBreakHours = null)
     {
-        // Step 1: Calculate total working hours first
-        $this->calculateTotalHours();
+        // Step 1: Calculate total working hours (or accept multi-punch paired sum)
+        if ($pairedWorkHours !== null) {
+            $this->attributes['total_hours'] = round(max(0, $pairedWorkHours), 2);
+            $this->attributes['break_hours'] = round(max(0, $pairedBreakHours ?? 0), 2);
+        } else {
+            $this->calculateTotalHours();
+        }
+
+        // Clear missing clock-out once both times exist
+        if ($this->clock_in && $this->clock_out) {
+            $this->is_missing_clock_out = false;
+        }
 
         // Step 2: Calculate overtime using shift working hours dynamically
         if ($this->shift && $this->shift->working_hours > 0) {
-            $standardHours = $this->shift->working_hours; // Use actual shift hours
+            $standardHours = $this->shift->working_hours;
         } else {
-            $standardHours = 8; // Fallback to 8 hours if no shift or invalid hours
+            $standardHours = 8;
         }
 
         $this->overtime_hours = max(0, round($this->total_hours - $standardHours, 2));
@@ -182,41 +311,30 @@ class AttendanceRecord extends BaseModel
         }
 
         // Step 4: Check late arrival and early departure
-        if ($this->clock_in && $this->clock_out) {
+        if ($this->clock_in) {
             $this->checkLateArrival();
+        }
+        if ($this->clock_in && $this->clock_out) {
             $this->checkEarlyDeparture();
         }
 
-        // Step 5: Set status based on holiday or total hours (only if not manually set)
+        // Step 5: Set status based on holiday or total hours
         if ($this->is_holiday) {
             $this->status = 'holiday';
         } elseif ($this->exists || $this->isDirty('clock_in') || $this->isDirty('clock_out')) {
-            // Only auto-calculate status for new records or when times change
-            // $presentThreshold = $standardHours;
-            // $halfDayThreshold = $presentThreshold / 2;
-
-            // if ($this->total_hours >= $halfDayThreshold) {
-            //     $this->status = 'present';
-            // } elseif ($this->total_hours > 0 && $this->total_hours < $halfDayThreshold) {
-            //     $this->status = 'half_day';
-            // } else {
-            //     $this->status = 'absent';
-            // }
-
-            $fullDayThreshold = $standardHours;        // e.g. 8 hours
-            $halfDayThreshold = $standardHours / 2;    // e.g. 4 hours
+            $fullDayThreshold = $standardHours;
+            $halfDayThreshold = $standardHours / 2;
 
             if ($this->total_hours >= $fullDayThreshold) {
                 $this->status = 'present';
             } elseif ($this->total_hours >= $halfDayThreshold) {
                 $this->status = 'half_day';
             } elseif ($this->total_hours > 0) {
-                $this->status = 'absent'; // or mark as short_leave if needed
+                $this->status = 'absent';
             } else {
                 $this->status = 'absent';
             }
         }
-        // If record exists and times haven't changed, keep manual status
 
         $this->save();
     }
@@ -226,7 +344,7 @@ class AttendanceRecord extends BaseModel
      */
     public function getClockInAttribute($value)
     {
-        return $value ? \Carbon\Carbon::parse($value)->format('H:i') : null;
+        return $value ? Carbon::parse($value)->format('H:i') : null;
     }
 
     /**
@@ -234,6 +352,6 @@ class AttendanceRecord extends BaseModel
      */
     public function getClockOutAttribute($value)
     {
-        return $value ? \Carbon\Carbon::parse($value)->format('H:i') : null;
+        return $value ? Carbon::parse($value)->format('H:i') : null;
     }
 }

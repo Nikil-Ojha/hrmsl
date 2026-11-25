@@ -12,16 +12,17 @@ import { useInitials } from '@/hooks/use-initials';
 import { useTranslation } from 'react-i18next';
 import { Edit, Trash2, Download, FileText, Calendar, Phone, Mail, MapPin, Building, Briefcase, CreditCard, User, Lock, Unlock, ArrowLeft, Check, X, ChevronDown, Eye } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { BiometricEnrollmentTab } from './components/biometric-enrollment-tab';
 
 export default function EmployeeShow() {
   const { t } = useTranslation();
-  const { auth, employee, flash, globalSettings } = usePage().props as any;
+  const { auth, employee, flash, globalSettings, biometricEnrollment } = usePage().props as any;
   const permissions = auth?.permissions || [];
   const getInitials = useInitials();
 
   // State
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('basic_info');
+  const [activeTab, setActiveTab] = useState(() => new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '').get('tab') || 'basic_info');
 
   useEffect(() => {
     if (flash?.success) {
@@ -245,7 +246,7 @@ export default function EmployeeShow() {
         {/* Employee Details Tabs */}
         <div className="xl:col-span-3">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid grid-cols-6 mb-4">
+            <TabsList className="flex flex-wrap h-auto gap-1 mb-4">
               <TabsTrigger value="basic_info">{t('Basic Info')}</TabsTrigger>
               <TabsTrigger value="employment">{t('Employment')}</TabsTrigger>
               <TabsTrigger value="contact">{t('Contact')}</TabsTrigger>
@@ -254,6 +255,9 @@ export default function EmployeeShow() {
                 <TabsTrigger value="certifications">{t('Certifications')}</TabsTrigger>
               )}
               <TabsTrigger value="documents">{t('Documents')}</TabsTrigger>
+              {biometricEnrollment && (
+                <TabsTrigger value="biometric">{t('Biometric Enrollment')}</TabsTrigger>
+              )}
             </TabsList>
 
             {/* Basic Info Tab */}
@@ -636,6 +640,17 @@ export default function EmployeeShow() {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            {/* Biometric Enrollment Tab */}
+            {biometricEnrollment && (
+              <TabsContent value="biometric">
+                <BiometricEnrollmentTab
+                  data={biometricEnrollment}
+                  employeeName={employee?.name || ''}
+                  permissions={permissions}
+                />
+              </TabsContent>
+            )}
           </Tabs>
         </div>
       </div>

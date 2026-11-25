@@ -271,7 +271,25 @@ class AttendanceRegularizationController extends Controller
                 // Apply changes to attendance record if approved
                 if ($validated['status'] === 'approved') {
                     $regularization->applyToAttendanceRecord();
+                    $regularization->attendanceRecord?->forceFill([
+                        'is_manual_override' => true,
+                        'source' => 'regularization',
+                    ])->saveQuietly();
                 }
+
+                $empProfileId = \App\Models\Employee::where('user_id', $regularization->employee_id)->value('id');
+                app(\App\Biometric\Services\BiometricAuditLogger::class)->log(
+                    category: \App\Biometric\Services\BiometricAuditLogger::CAT_ATTENDANCE_CORRECTION,
+                    action: 'attendance.regularization_' . $validated['status'],
+                    description: ucfirst($validated['status']) . " attendance regularization #{$regularization->id} for {$regularization->employee?->name} on {$regularization->date}.",
+                    targetType: 'AttendanceRegularization',
+                    targetId: $regularization->id,
+                    targetLabel: ($regularization->employee?->name ?? 'Employee') . " ({$regularization->date})",
+                    employeeId: $empProfileId ? (int) $empProfileId : null,
+                    before: ['clock_in' => $regularization->original_clock_in, 'clock_out' => $regularization->original_clock_out],
+                    after: ['clock_in' => $regularization->requested_clock_in, 'clock_out' => $regularization->requested_clock_out, 'status' => $validated['status']],
+                    metadata: ['manager_comments' => $validated['manager_comments'] ?? null, 'attendance_record_id' => $regularization->attendance_record_id],
+                );
 
                 return redirect()->back()->with('success', __('Regularization request status updated successfully'));
             } catch (\Exception $e) {

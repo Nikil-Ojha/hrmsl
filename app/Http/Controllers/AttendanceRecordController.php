@@ -474,6 +474,17 @@ class AttendanceRecordController extends Controller
         $record->fresh(); // Reload to get relationships
         $record->processAttendance();
 
+        app(\App\Biometric\Services\BiometricAuditLogger::class)->log(
+            category: \App\Biometric\Services\BiometricAuditLogger::CAT_ATTENDANCE_CORRECTION,
+            action: 'attendance.manual_created',
+            description: "Manually created attendance record for {$record->employee?->name} on {$validated['date']} ({$record->clock_in} – {$record->clock_out}, {$record->status}).",
+            targetType: 'AttendanceRecord',
+            targetId: $record->id,
+            targetLabel: ($record->employee?->name ?? 'Employee') . " ({$validated['date']})",
+            employeeId: $employee?->id,
+            after: $record->only(['date', 'clock_in', 'clock_out', 'total_hours', 'status', 'source', 'notes']),
+        );
+
         return redirect()->back()->with('success', __('Attendance record created successfully.'));
     }
 
@@ -549,12 +560,36 @@ class AttendanceRecordController extends Controller
 
                 // Set weekend flag
                 $validated['is_weekend'] = Carbon::parse($validated['date'])->isWeekend();
+                $validated['is_manual_override'] = true;
+                $validated['source'] = 'manual';
+                $validated['clock_in_at'] = !empty($validated['clock_in']) ? Carbon::parse($validated['date'] . ' ' . $validated['clock_in']) : null;
+                $validated['clock_out_at'] = !empty($validated['clock_out']) ? Carbon::parse($validated['date'] . ' ' . $validated['clock_out']) : null;
+                if ($validated['clock_in_at'] && $validated['clock_out_at'] && $validated['clock_out_at']->lt($validated['clock_in_at'])) {
+                    $validated['clock_out_at']->addDay();
+                }
+                if (!empty($validated['clock_out'])) {
+                    $validated['is_missing_clock_out'] = false;
+                }
+
+                $beforeSnapshot = $attendanceRecord->only(['date', 'clock_in', 'clock_out', 'total_hours', 'status', 'source', 'is_manual_override', 'is_missing_clock_out', 'notes']);
 
                 $attendanceRecord->update($validated);
 
                 // Process complete attendance calculation
                 $attendanceRecord->fresh(); // Reload to get relationships
                 $attendanceRecord->processAttendance();
+
+                app(\App\Biometric\Services\BiometricAuditLogger::class)->log(
+                    category: \App\Biometric\Services\BiometricAuditLogger::CAT_ATTENDANCE_CORRECTION,
+                    action: 'attendance.manual_corrected',
+                    description: "Manually corrected attendance record for {$attendanceRecord->employee?->name} on {$validated['date']} ({$attendanceRecord->clock_in} – {$attendanceRecord->clock_out}, {$attendanceRecord->status}).",
+                    targetType: 'AttendanceRecord',
+                    targetId: $attendanceRecord->id,
+                    targetLabel: ($attendanceRecord->employee?->name ?? 'Employee') . " ({$validated['date']})",
+                    employeeId: $employee?->id,
+                    before: $beforeSnapshot,
+                    after: $attendanceRecord->only(['date', 'clock_in', 'clock_out', 'total_hours', 'status', 'source', 'is_manual_override', 'is_missing_clock_out', 'notes']),
+                );
 
                 return redirect()->back()->with('success', __('Attendance record updated successfully'));
             } catch (\Exception $e) {
@@ -573,7 +608,21 @@ class AttendanceRecordController extends Controller
 
         if ($attendanceRecord) {
             try {
+                $snapshot = $attendanceRecord->only(['id', 'employee_id', 'date', 'clock_in', 'clock_out', 'total_hours', 'status', 'source']);
+                $empName = $attendanceRecord->employee?->name ?? 'Employee';
+                $empProfileId = Employee::where('user_id', $attendanceRecord->employee_id)->value('id');
                 $attendanceRecord->delete();
+
+                app(\App\Biometric\Services\BiometricAuditLogger::class)->log(
+                    category: \App\Biometric\Services\BiometricAuditLogger::CAT_ATTENDANCE_CORRECTION,
+                    action: 'attendance.manual_deleted',
+                    description: "Deleted attendance record #{$snapshot['id']} for {$empName} (" . Carbon::parse($snapshot['date'])->toDateString() . ').',
+                    targetType: 'AttendanceRecord',
+                    targetId: (int) $snapshot['id'],
+                    targetLabel: $empName . ' (' . Carbon::parse($snapshot['date'])->toDateString() . ')',
+                    employeeId: $empProfileId ? (int) $empProfileId : null,
+                    before: $snapshot,
+                );
 
                 return redirect()->back()->with('success', __('Attendance record deleted successfully'));
             } catch (\Exception $e) {

@@ -99,6 +99,10 @@ class AttendancePolicyController extends Controller
             'late_arrival_grace' => 'required|integer|min:0',
             'early_departure_grace' => 'required|integer|min:0',
             'overtime_rate_per_hour' => 'required|numeric|min:0',
+            'punch_pairing_mode' => 'nullable|in:first_last,in_out_pairs,device_state',
+            'duplicate_punch_window_sec' => 'nullable|integer|min:0|max:3600',
+            'missing_clock_out_grace_hours' => 'nullable|integer|min:1|max:24',
+            'auto_detect_shift' => 'nullable|boolean',
             'status' => 'nullable|in:active,inactive',
         ]);
 
@@ -114,7 +118,17 @@ class AttendancePolicyController extends Controller
             return redirect()->back()->with('error', __('Attendance policy with this name already exists.'));
         }
 
-        AttendancePolicy::create($validated);
+        $policy = AttendancePolicy::create($validated);
+
+        app(\App\Biometric\Services\BiometricAuditLogger::class)->log(
+            category: \App\Biometric\Services\BiometricAuditLogger::CAT_SETTINGS,
+            action: 'settings.policy_created',
+            description: "Created attendance & biometric policy '{$policy->name}'.",
+            targetType: 'AttendancePolicy',
+            targetId: $policy->id,
+            targetLabel: $policy->name,
+            after: $policy->only(['name', 'late_arrival_grace', 'early_departure_grace', 'overtime_rate_per_hour', 'punch_pairing_mode', 'duplicate_punch_window_sec', 'missing_clock_out_grace_hours', 'auto_detect_shift', 'status']),
+        );
 
         return redirect()->back()->with('success', __('Attendance policy created successfully.'));
     }
@@ -133,6 +147,10 @@ class AttendancePolicyController extends Controller
                     'late_arrival_grace' => 'required|integer|min:0',
                     'early_departure_grace' => 'required|integer|min:0',
                     'overtime_rate_per_hour' => 'required|numeric|min:0',
+            'punch_pairing_mode' => 'nullable|in:first_last,in_out_pairs,device_state',
+            'duplicate_punch_window_sec' => 'nullable|integer|min:0|max:3600',
+            'missing_clock_out_grace_hours' => 'nullable|integer|min:1|max:24',
+            'auto_detect_shift' => 'nullable|boolean',
                     'status' => 'nullable|in:active,inactive',
                 ]);
 
@@ -146,7 +164,19 @@ class AttendancePolicyController extends Controller
                     return redirect()->back()->with('error', __('Attendance policy with this name already exists.'));
                 }
 
+                $before = $attendancePolicy->only(['name', 'late_arrival_grace', 'early_departure_grace', 'overtime_rate_per_hour', 'punch_pairing_mode', 'duplicate_punch_window_sec', 'missing_clock_out_grace_hours', 'auto_detect_shift', 'status']);
                 $attendancePolicy->update($validated);
+
+                app(\App\Biometric\Services\BiometricAuditLogger::class)->log(
+                    category: \App\Biometric\Services\BiometricAuditLogger::CAT_SETTINGS,
+                    action: 'settings.policy_updated',
+                    description: "Updated attendance & biometric policy '{$attendancePolicy->name}'.",
+                    targetType: 'AttendancePolicy',
+                    targetId: $attendancePolicy->id,
+                    targetLabel: $attendancePolicy->name,
+                    before: $before,
+                    after: $attendancePolicy->only(['name', 'late_arrival_grace', 'early_departure_grace', 'overtime_rate_per_hour', 'punch_pairing_mode', 'duplicate_punch_window_sec', 'missing_clock_out_grace_hours', 'auto_detect_shift', 'status']),
+                );
 
                 return redirect()->back()->with('success', __('Attendance policy updated successfully'));
             } catch (\Exception $e) {

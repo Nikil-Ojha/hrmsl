@@ -458,8 +458,15 @@ class EmployeeController extends Controller
                 });
             }
 
+            $biometricEnrollment = null;
+            if (Auth::user()->can('view-biometric-enrollments') || Auth::user()->can('manage-biometric-enrollments')) {
+                $biometricEnrollment = app(\App\Http\Controllers\Biometric\BiometricEnrollmentController::class)
+                    ->payloadForEmployee($employee);
+            }
+
             return Inertia::render('hr/employees/show', [
                 'employee' => $user,
+                'biometricEnrollment' => $biometricEnrollment,
             ]);
         } else {
             return redirect()->back()->with('error', __('Permission Denied.'));

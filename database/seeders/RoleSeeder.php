@@ -666,7 +666,35 @@ class RoleSeeder extends Seeder
             'manage-biomatric-attedance-settings',
             'manage-biometric-attendance',
             'sync-biometric-attendance',
+            'reprocess-biometric-punches',
             'view-biometric-attendance',
+
+            // Biometric Devices
+            'manage-biometric-devices',
+            'manage-any-biometric-devices',
+            'manage-own-biometric-devices',
+            'view-biometric-devices',
+            'create-biometric-devices',
+            'edit-biometric-devices',
+            'delete-biometric-devices',
+            'sync-biometric-devices',
+            'control-biometric-devices',
+
+            // Biometric Agents
+            'manage-biometric-agents',
+            'manage-any-biometric-agents',
+            'manage-own-biometric-agents',
+            'view-biometric-agents',
+            'create-biometric-agents',
+            'edit-biometric-agents',
+            'delete-biometric-agents',
+
+            // Biometric Enrollments
+            'manage-biometric-enrollments',
+            'view-biometric-enrollments',
+            'enroll-biometric-employees',
+            'remove-biometric-enrollments',
+            'sync-biometric-enrollments',
 
             // Ip Restriction
             'manage-ip-restriction-settings',

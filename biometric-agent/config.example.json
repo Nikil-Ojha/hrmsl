@@ -1,0 +1,13 @@
+{
+  "server_url": "https://hrms.example.com",
+  "data_dir": "./data",
+  "plugins_dir": "./plugins",
+  "allow_insecure_http": false,
+  "verify_tls": true,
+  "ca_bundle": null,
+  "request_timeout_sec": 20,
+  "log_level": "INFO",
+  "log_max_bytes": 5242880,
+  "log_backup_count": 5,
+  "driver_overrides": {}
+}

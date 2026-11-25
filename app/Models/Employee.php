@@ -130,6 +130,11 @@ class Employee extends Model
         return $this->hasMany(EmployeeDocument::class,'employee_id','user_id');
     }
 
+    public function biometricEnrollments()
+    {
+        return $this->hasMany(BiometricEnrollment::class, 'employee_id');
+    }
+
     /**
      * Generate unique employee ID
      */

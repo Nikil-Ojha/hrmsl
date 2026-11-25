@@ -573,6 +573,20 @@ export default function AttendancePolicies() {
             { name: 'early_departure_grace', label: t('Early Departure Grace (minutes)'), type: 'number', required: true, min: 0, placeholder: t('e.g. 15'), defaultValue: 15 },
             { name: 'overtime_rate_per_hour', label: t('Overtime Rate Per Hour'), type: 'number', required: true, min: 0, step: 0.01, placeholder: t('e.g. 150.00'), defaultValue: 150 },
             {
+              name: 'punch_pairing_mode',
+              label: t('Biometric Punch Pairing Rule'),
+              type: 'select',
+              options: [
+                { value: 'first_last', label: t('First Punch IN / Last Punch OUT') },
+                { value: 'in_out_pairs', label: t('Consecutive IN-OUT Pairs (Multiple Breaks)') },
+                { value: 'device_state', label: t('Respect Device IN / OUT State') }
+              ],
+              defaultValue: 'first_last'
+            },
+            { name: 'duplicate_punch_window_sec', label: t('Duplicate Punch Window (seconds)'), type: 'number', min: 0, max: 3600, placeholder: '60', defaultValue: 60 },
+            { name: 'missing_clock_out_grace_hours', label: t('Missing Clock-Out Grace (hours)'), type: 'number', min: 1, max: 24, placeholder: '4', defaultValue: 4 },
+            { name: 'auto_detect_shift', label: t('Auto-Detect Shift (Multiple Shifts)'), type: 'checkbox', defaultValue: false },
+            {
               name: 'status',
               label: t('Status'),
               type: 'select',

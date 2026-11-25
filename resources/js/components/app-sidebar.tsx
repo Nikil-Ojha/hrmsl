@@ -130,7 +130,13 @@ export function AppSidebar() {
         const attendanceChildren: any[] = [];
         if (hasPermission(permissions, 'manage-attendance-records')) attendanceChildren.push({ title: t('Attendance Records'), href: route('hr.attendance-records.index') });
         // if (hasPermission(permissions, 'manage-time-entries')) attendanceChildren.push({ title: t('Timesheet'), href: route('hr.time-entries.index') });
+        if (hasPermission(permissions, 'view-biometric-devices') || hasPermission(permissions, 'manage-biometric-devices') || hasPermission(permissions, 'view-biometric-logs') || hasPermission(permissions, 'manage-biometric-attendance')) attendanceChildren.push({ title: t('Biometric Dashboard'), href: route('hr.biometric-dashboard.index') });
         if (hasPermission(permissions, 'manage-biometric-attendance')) attendanceChildren.push({ title: t('Biometric Attendance'), href: route('hr.biometric-attendance.index') });
+        if (hasPermission(permissions, 'view-biometric-devices') || hasPermission(permissions, 'manage-biometric-devices')) attendanceChildren.push({ title: t('Biometric Devices'), href: route('hr.biometric-devices.index') });
+        if (hasPermission(permissions, 'manage-biometric-agents') || hasPermission(permissions, 'manage-biometric-settings')) attendanceChildren.push({ title: t('Biometric Agents'), href: route('hr.biometric-agents.index') });
+        if (hasPermission(permissions, 'manage-biometric-enrollments') || hasPermission(permissions, 'view-biometric-enrollments') || hasPermission(permissions, 'enroll-biometric-employees')) attendanceChildren.push({ title: t('Biometric Enrollments'), href: route('hr.biometric-enrollments.index') });
+        if (hasPermission(permissions, 'view-biometric-logs') || hasPermission(permissions, 'view-biometric-attendance') || hasPermission(permissions, 'manage-biometric-attendance')) attendanceChildren.push({ title: t('Attendance Sync'), href: route('hr.biometric-sync.index') });
+        if (hasPermission(permissions, 'view-biometric-logs') || hasPermission(permissions, 'manage-biometric-settings') || hasPermission(permissions, 'manage-biometric-devices')) attendanceChildren.push({ title: t('Biometric Audit Logs'), href: route('hr.biometric-audit-logs.index') });
         if (hasPermission(permissions, 'manage-attendance-regularizations')) attendanceChildren.push({ title: t('Attendance Tickets'), href: route('hr.attendance-regularizations.index') });
         if (hasPermission(permissions, 'manage-shifts')) attendanceChildren.push({ title: t('Shifts'), href: route('hr.shifts.index') });
         if (hasPermission(permissions, 'manage-attendance-policies')) attendanceChildren.push({ title: t('Attendance Policies'), href: route('hr.attendance-policies.index') });

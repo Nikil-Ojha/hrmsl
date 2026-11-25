@@ -14,6 +14,12 @@ use App\Http\Controllers\AwardTypeController;
 use App\Http\Controllers\BankPaymentController;
 use App\Http\Controllers\BenefitPaymentController;
 use App\Http\Controllers\BiometricAttendanceController;
+use App\Http\Controllers\Biometric\BiometricAgentController;
+use App\Http\Controllers\Biometric\BiometricAuditLogController;
+use App\Http\Controllers\Biometric\BiometricDashboardController;
+use App\Http\Controllers\Biometric\BiometricEnrollmentController;
+use App\Http\Controllers\Biometric\BiometricSyncController;
+use App\Http\Controllers\Biometric\BiometricDeviceController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\CandidateAssessmentController;
 use App\Http\Controllers\CandidateController;
@@ -1190,6 +1196,89 @@ Route::middleware(['auth', 'verified', 'setting'])->group(function () {
             Route::post('hr/biometric-attendance/enroll-all', [BiometricAttendanceController::class, 'enrollAllEmployees'])->name('hr.biometric-attendance.enroll-all');
             Route::get('hr/biometric-attendance/{employeeCode}/{date}', [BiometricAttendanceController::class, 'show'])->name('hr.biometric-attendance.show');
             Route::post('hr/biometric-attendance/{id}/sync', [BiometricAttendanceController::class, 'sync'])->name('hr.biometric-attendance.sync');
+        });
+
+        // Biometric Devices routes (granular permissions — Phase 11)
+        Route::prefix('hr/biometric-devices')->name('hr.biometric-devices.')->group(function () {
+            Route::get('/', [BiometricDeviceController::class, 'index'])->middleware('permission:view-biometric-devices|manage-biometric-devices')->name('index');
+            Route::post('/', [BiometricDeviceController::class, 'store'])->middleware('permission:create-biometric-devices')->name('store');
+            Route::get('{device}', [BiometricDeviceController::class, 'show'])->middleware('permission:view-biometric-devices|manage-biometric-devices')->name('show');
+            Route::put('{device}', [BiometricDeviceController::class, 'update'])->middleware('permission:edit-biometric-devices')->name('update');
+            Route::delete('{device}', [BiometricDeviceController::class, 'destroy'])->middleware('permission:delete-biometric-devices')->name('destroy');
+            Route::get('{device}/dependencies', [BiometricDeviceController::class, 'dependencies'])->middleware('permission:delete-biometric-devices')->name('dependencies');
+            Route::put('{device}/toggle-status', [BiometricDeviceController::class, 'toggleStatus'])->middleware('permission:edit-biometric-devices')->name('toggle-status');
+            Route::post('{device}/api-key', [BiometricDeviceController::class, 'regenerateApiKey'])->middleware('permission:manage-biometric-settings|edit-biometric-devices')->name('api-key');
+
+            Route::middleware('permission:sync-biometric-devices')->group(function () {
+                Route::post('{device}/connectivity', [BiometricDeviceController::class, 'checkConnectivity'])->middleware('throttle:20,1')->name('connectivity');
+                Route::post('{device}/sync-time', [BiometricDeviceController::class, 'syncTime'])->name('sync-time');
+                Route::post('{device}/sync-employees', [BiometricDeviceController::class, 'syncEmployees'])->name('sync-employees');
+                Route::post('{device}/fetch-logs', [BiometricDeviceController::class, 'fetchLogs'])->name('fetch-logs');
+                Route::get('{device}/employee-preview', [BiometricDeviceController::class, 'employeePreview'])->name('employee-preview');
+                Route::post('{device}/refresh-info', [BiometricDeviceController::class, 'refreshInfo'])->name('refresh-info');
+                Route::post('{device}/fetch-users', [BiometricDeviceController::class, 'fetchUsers'])->name('fetch-users');
+            });
+
+            Route::middleware('permission:execute-biometric-commands|control-biometric-devices')->group(function () {
+                Route::post('{device}/cancel-commands', [BiometricDeviceController::class, 'cancelCommands'])->name('cancel-commands');
+                Route::post('{device}/remove-user', [BiometricDeviceController::class, 'removeUser'])->name('remove-user');
+                Route::post('{device}/clear-logs', [BiometricDeviceController::class, 'clearLogs'])->name('clear-logs');
+                Route::post('{device}/restart', [BiometricDeviceController::class, 'restart'])->name('restart');
+            });
+        });
+
+        // Local Biometric Agents routes
+        Route::middleware('permission:manage-biometric-agents|manage-biometric-settings')->prefix('hr/biometric-agents')->name('hr.biometric-agents.')->group(function () {
+            Route::get('/', [BiometricAgentController::class, 'index'])->name('index');
+            Route::post('/', [BiometricAgentController::class, 'store'])->middleware('permission:create-biometric-agents|manage-biometric-settings')->name('store');
+            Route::get('{agent}', [BiometricAgentController::class, 'show'])->middleware('permission:view-biometric-agents|manage-biometric-settings')->name('show');
+            Route::put('{agent}', [BiometricAgentController::class, 'update'])->middleware('permission:edit-biometric-agents|manage-biometric-settings')->name('update');
+            Route::delete('{agent}', [BiometricAgentController::class, 'destroy'])->middleware('permission:delete-biometric-agents|manage-biometric-settings')->name('destroy');
+
+            Route::middleware('permission:edit-biometric-agents|manage-biometric-settings')->group(function () {
+                Route::post('{agent}/reissue-token', [BiometricAgentController::class, 'reissueToken'])->name('reissue-token');
+                Route::post('{agent}/revoke', [BiometricAgentController::class, 'revoke'])->name('revoke');
+                Route::post('{agent}/devices', [BiometricAgentController::class, 'assignDevice'])->name('assign-device');
+                Route::delete('{agent}/devices/{device}', [BiometricAgentController::class, 'unassignDevice'])->name('unassign-device');
+                Route::post('{agent}/discoveries/{discovery}/ignore', [BiometricAgentController::class, 'ignoreDiscovery'])->name('ignore-discovery');
+            });
+        });
+
+        // Employee Biometric Enrollment routes
+        Route::prefix('hr/biometric-enrollments')->name('hr.biometric-enrollments.')->group(function () {
+            Route::get('/', [BiometricEnrollmentController::class, 'index'])->middleware('permission:manage-biometric-enrollments|view-biometric-enrollments|enroll-biometric-employees')->name('index');
+            Route::post('start', [BiometricEnrollmentController::class, 'start'])->middleware('permission:enroll-biometric-employees')->name('start');
+            Route::post('{enrollment}/re-enroll', [BiometricEnrollmentController::class, 'reEnroll'])->middleware('permission:enroll-biometric-employees')->name('re-enroll');
+            Route::post('{enrollment}/confirm', [BiometricEnrollmentController::class, 'confirm'])->middleware('permission:enroll-biometric-employees')->name('confirm');
+            Route::post('employees/{employee}/sync', [BiometricEnrollmentController::class, 'syncDevices'])->middleware('permission:sync-biometric-enrollments|sync-biometric-devices')->name('sync-devices');
+            Route::delete('{enrollment}', [BiometricEnrollmentController::class, 'remove'])->middleware('permission:remove-biometric-enrollments')->name('remove');
+            Route::delete('employees/{employee}/all', [BiometricEnrollmentController::class, 'removeAll'])->middleware('permission:remove-biometric-enrollments')->name('remove-all');
+        });
+
+        // Biometric Dashboard route
+        Route::get('hr/biometric-dashboard', [BiometricDashboardController::class, 'index'])
+            ->middleware('permission:view-biometric-devices|manage-biometric-devices|view-biometric-logs|manage-biometric-attendance')
+            ->name('hr.biometric-dashboard.index');
+
+        // Biometric Audit Logs route
+        Route::get('hr/biometric-audit-logs', [BiometricAuditLogController::class, 'index'])
+            ->middleware('permission:view-biometric-logs|manage-biometric-settings|manage-biometric-devices')
+            ->name('hr.biometric-audit-logs.index');
+
+        // Biometric Attendance Synchronization & Raw Logs routes
+        Route::prefix('hr/biometric-sync')->name('hr.biometric-sync.')->group(function () {
+            Route::middleware('permission:view-biometric-logs|view-biometric-attendance|manage-biometric-attendance')->group(function () {
+                Route::get('/', [BiometricSyncController::class, 'index'])->name('index');
+                Route::get('raw-logs/{userId}/{date}', [BiometricSyncController::class, 'rawLogsForDate'])->whereNumber('userId')->name('raw-logs');
+            });
+            Route::middleware('permission:sync-biometric-devices|reprocess-biometric-punches|sync-biometric-attendance')->group(function () {
+                Route::post('punches/{punch}/reprocess', [BiometricSyncController::class, 'reprocessPunch'])->name('reprocess-punch');
+                Route::post('failures/{failure}/retry', [BiometricSyncController::class, 'retryFailure'])->name('retry-failure');
+                Route::post('failures/retry-all', [BiometricSyncController::class, 'retryAllFailures'])->name('retry-all');
+                Route::post('failures/{failure}/dismiss', [BiometricSyncController::class, 'dismissFailure'])->name('dismiss-failure');
+                Route::post('attendance/{record}/recalculate', [BiometricSyncController::class, 'recalculateAttendance'])->name('recalculate');
+                Route::post('detect-missing-clockouts', [BiometricSyncController::class, 'detectMissingClockOuts'])->name('detect-missing');
+            });
         });
 
         // Plans management routes (admin only)

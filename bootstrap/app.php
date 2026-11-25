@@ -39,6 +39,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'setting' => \App\Http\Middleware\SettingMiddleware::class,
             'checksaas' => \App\Http\Middleware\CheckSaas::class,
             'career.shared' => \App\Http\Middleware\CareerSharedDataMiddleware::class,
+            'biometric.agent' => \App\Http\Middleware\AuthenticateBiometricAgent::class,
+            'biometric.agent.audit' => \App\Http\Middleware\AuditBiometricApiRequest::class,
+            'biometric.https' => \App\Http\Middleware\EnforceBiometricHttps::class,
+            'biometric.device' => \App\Http\Middleware\AuthenticateBiometricDevice::class,
         ]);
 
         $middleware->validateCsrfTokens(

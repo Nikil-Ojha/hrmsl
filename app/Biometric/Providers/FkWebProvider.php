@@ -66,9 +66,15 @@ class FkWebProvider extends AbstractPushProvider
 
     public function setupHints(): array
     {
+        $url = rtrim((string) config('app.url'), '/');
+        $port = parse_url($url, PHP_URL_PORT) ?: (str_starts_with($url, 'https') ? 443 : 80);
+
         return [
-            ['label' => 'Server URL', 'value' => rtrim((string) config('app.url'), '/') . '/hdata.aspx'],
-            ['label' => 'Device ID (must match)', 'value' => $this->device->serial_number],
+            ['label' => 'FKWeb Push URL', 'value' => $url . '/hdata.aspx'],
+            ['label' => 'Alternative Root Push URL', 'value' => $url . '/'],
+            ['label' => 'Server Host / IP', 'value' => (string) parse_url($url, PHP_URL_HOST)],
+            ['label' => 'Server Port', 'value' => (string) $port],
+            ['label' => 'Device ID / Serial (must match)', 'value' => $this->device->serial_number],
         ];
     }
 }

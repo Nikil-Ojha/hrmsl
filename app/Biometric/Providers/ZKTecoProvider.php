@@ -63,10 +63,11 @@ class ZKTecoProvider extends AbstractPushProvider
 
     public function setupHints(): array
     {
-        $url = (string) config('app.url');
+        $url = rtrim((string) config('app.url'), '/');
         $port = parse_url($url, PHP_URL_PORT) ?: (str_starts_with($url, 'https') ? 443 : 80);
 
         return [
+            ['label' => 'ADMS Push URL', 'value' => $url . '/iclock/cdata'],
             ['label' => 'Server Address', 'value' => (string) parse_url($url, PHP_URL_HOST)],
             ['label' => 'Server Port', 'value' => (string) $port],
             ['label' => 'Device Serial Number (must match)', 'value' => $this->device->serial_number],

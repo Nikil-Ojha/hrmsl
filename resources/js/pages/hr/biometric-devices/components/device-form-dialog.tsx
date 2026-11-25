@@ -163,7 +163,7 @@ export function DeviceFormDialog({ open, onClose, mode, deviceId, initial, optio
             <Field label={t('Device Type')} required error={err('device_type')}>
               <Select value={data.device_type} onValueChange={(v) => setData('device_type', v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[60000]">
                   {options.device_types.map((o) => <SelectItem key={o.value} value={o.value}>{t(o.label)}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -186,7 +186,7 @@ export function DeviceFormDialog({ open, onClose, mode, deviceId, initial, optio
             <Field label={t('Branch / Location')} error={err('branch_id')} help={t('Employees of this branch are synchronized to the device.')}>
               <Select value={data.branch_id ? String(data.branch_id) : NONE} onValueChange={onBranchChange}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[60000]">
                   <SelectItem value={NONE}>{t('All branches')}</SelectItem>
                   {options.branches.map((b) => <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)}
                 </SelectContent>
@@ -195,7 +195,7 @@ export function DeviceFormDialog({ open, onClose, mode, deviceId, initial, optio
             <Field label={t('Department (optional)')} error={err('department_id')}>
               <Select value={data.department_id ? String(data.department_id) : NONE} onValueChange={(v) => setData('department_id', v === NONE ? null : v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[60000]">
                   <SelectItem value={NONE}>{t('All departments')}</SelectItem>
                   {departments.map((d) => <SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>)}
                 </SelectContent>
@@ -204,7 +204,7 @@ export function DeviceFormDialog({ open, onClose, mode, deviceId, initial, optio
             <Field label={t('Local Communication Agent (optional)')} error={err('agent_id')} help={t('Assign if this device sits on a private office LAN, Wi-Fi or USB port behind a Local Agent.')}>
               <Select value={data.agent_id ? String(data.agent_id) : NONE} onValueChange={(v) => setData('agent_id', v === NONE ? null : v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[60000]">
                   <SelectItem value={NONE}>{t('Direct to cloud (no local agent)')}</SelectItem>
                   {(options.agents ?? []).map((a) => (
                     <SelectItem key={a.id} value={String(a.id)}>{a.name} ({a.agent_identifier})</SelectItem>
@@ -218,7 +218,7 @@ export function DeviceFormDialog({ open, onClose, mode, deviceId, initial, optio
             <Field label={t('Communication Protocol')} required error={err('protocol')}>
               <Select value={data.protocol} onValueChange={onProtocolChange}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[60000]">
                   {options.drivers.map((d) => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -226,7 +226,7 @@ export function DeviceFormDialog({ open, onClose, mode, deviceId, initial, optio
             <Field label={t('Connection Type')} required error={err('connection_type')}>
               <Select value={data.connection_type} onValueChange={(v) => setData('connection_type', v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[60000]">
                   {options.connection_types.map((o) => <SelectItem key={o.value} value={o.value}>{t(o.label)}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -250,7 +250,7 @@ export function DeviceFormDialog({ open, onClose, mode, deviceId, initial, optio
             <Field label={t('Device Timezone')} error={err('timezone')} help={t('Leave blank to use the company timezone') + ` (${options.default_timezone}).`}>
               <Select value={data.timezone || NONE} onValueChange={(v) => setData('timezone', v === NONE ? '' : v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent className="max-h-72">
+                <SelectContent className="z-[60000] max-h-72" searchable>
                   <SelectItem value={NONE}>{t('Company default')}</SelectItem>
                   {options.timezones.map((tz) => <SelectItem key={tz} value={tz}>{tz}</SelectItem>)}
                 </SelectContent>
@@ -262,7 +262,7 @@ export function DeviceFormDialog({ open, onClose, mode, deviceId, initial, optio
             <Field label={t('Authentication Method')} required error={err('auth_type')}>
               <Select value={data.auth_type} onValueChange={(v) => setData('auth_type', v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[60000]">
                   {(driver?.auth_types ?? options.auth_types).map((o) => <SelectItem key={o.value} value={o.value}>{t(o.label)}</SelectItem>)}
                 </SelectContent>
               </Select>

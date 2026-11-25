@@ -32,6 +32,10 @@ class DeviceGateway
 
         $devices = BiometricDevice::where('serial_number', $serial)->limit(2)->get();
 
+        if ($devices->isEmpty()) {
+            $devices = BiometricDevice::where('device_identifier', $serial)->limit(2)->get();
+        }
+
         if ($devices->count() > 1) {
             Log::warning('[Biometric] Ambiguous device serial number across tenants; ignoring.', ['serial' => $serial]);
 

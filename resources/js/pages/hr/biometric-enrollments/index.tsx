@@ -285,7 +285,7 @@ export default function BiometricEnrollmentsIndex() {
               <Label>{t('Employee')} <span className="text-red-500">*</span></Label>
               <Select value={empId} onValueChange={onSelectEmployee}>
                 <SelectTrigger><SelectValue placeholder={t('Select employee...')} /></SelectTrigger>
-                <SelectContent className="max-h-64">
+                <SelectContent className="z-[60000] max-h-64" searchable>
                   {employees.map((e: any) => (
                     <SelectItem key={e.id} value={String(e.id)}>{e.name} ({e.employee_code})</SelectItem>
                   ))}
@@ -296,7 +296,7 @@ export default function BiometricEnrollmentsIndex() {
               <Label>{t('Biometric Device')} <span className="text-red-500">*</span></Label>
               <Select value={devId} onValueChange={onSelectDevice}>
                 <SelectTrigger><SelectValue placeholder={t('Select device...')} /></SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[60000]">
                   {devices.map((d: EnrollmentDeviceOption) => (
                     <SelectItem key={d.id} value={String(d.id)}>{d.name} ({d.device_type_label})</SelectItem>
                   ))}
@@ -308,7 +308,7 @@ export default function BiometricEnrollmentsIndex() {
                 <Label>{t('Method')}</Label>
                 <Select value={modality} onValueChange={setModality}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[60000]">
                     {(selectedDevice?.supported_modalities ?? []).map((m) => (
                       <SelectItem key={m.value} value={m.value}>{t(m.label)}</SelectItem>
                     ))}

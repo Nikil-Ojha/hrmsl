@@ -122,16 +122,28 @@ class DeviceManager
         $result = $provider->testConnection();
 
         $tcpAttempted = collect($result->checks)->contains(fn ($c) => $c['name'] === 'tcp' && $c['passed'] !== null);
+        $tcpSucceeded = collect($result->checks)->contains(fn ($c) => $c['name'] === 'tcp' && $c['passed'] === true);
         $status = match (true) {
             $result->online => ConnectionStatus::Online,
             $device->last_seen_at !== null || $tcpAttempted || $provider::definition()->communication === ProviderDefinition::SIMULATED => ConnectionStatus::Offline,
             default => ConnectionStatus::Unknown,
         };
 
-        $device->forceFill([
+        $updates = [
             'connection_status' => $status,
             'last_connectivity_check_at' => now(),
-        ])->saveQuietly();
+        ];
+
+        // When a live TCP connection to the device succeeds, record last_seen_at so
+        // effective_connection_status does not immediately revert to Offline on reload.
+        if ($tcpSucceeded) {
+            $updates['last_seen_at'] = now();
+            if ($device->ip_address && !$device->last_seen_ip) {
+                $updates['last_seen_ip'] = $device->ip_address;
+            }
+        }
+
+        $device->forceFill($updates)->saveQuietly();
 
         return $this->runs->finish(
             $run,

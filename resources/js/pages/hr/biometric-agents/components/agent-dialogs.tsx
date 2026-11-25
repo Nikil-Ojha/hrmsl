@@ -129,7 +129,7 @@ export function AgentFormDialog({
               <Label>{t('Branch / Site')}</Label>
               <Select value={data.branch_id ? String(data.branch_id) : NONE} onValueChange={(v) => setData('branch_id', v === NONE ? null : v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[60000]">
                   <SelectItem value={NONE}>{t('All branches / Company-wide')}</SelectItem>
                   {branches.map((b) => <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)}
                 </SelectContent>

@@ -627,7 +627,7 @@ export default function BiometricAttendance() {
           )}
 
           {/* ── Table card ── */}
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow overflow-hidden">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow">
             <CrudTable
               columns={columns}
               actions={actions}

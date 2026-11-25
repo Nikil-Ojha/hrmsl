@@ -143,15 +143,33 @@ use Inertia\Inertia;
 
 Route::get('/', [LandingPageController::class, 'show'])->name('home');
 
-// Direct Biometric Machine Push Routes (RS-9W / RS09W / SN: RSS20220619704)
-Route::post('/', [BiometricAttendanceApiController::class, 'handle'])->name('biometric.root.push');
-Route::match(['get', 'post'], '/index.php', [BiometricAttendanceApiController::class, 'handle']);
-Route::match(['get', 'post'], '/hdata.aspx', [BiometricAttendanceApiController::class, 'handleFkWebPush'])->name('biometric.fkweb.push');
-Route::match(['get', 'post'], '/iclock/cdata', [BiometricAttendanceApiController::class, 'handleIclockCdata'])->name('biometric.iclock.cdata');
-Route::match(['get', 'post'], '/iclock/getrequest', [BiometricAttendanceApiController::class, 'handleIclockGetRequest'])->name('biometric.iclock.getrequest');
-Route::match(['get', 'post'], '/iclock/devicecmd', [BiometricAttendanceApiController::class, 'handleIclockDeviceCmd'])->name('biometric.iclock.devicecmd');
-Route::match(['get', 'post'], '/iclock/registry', [BiometricAttendanceApiController::class, 'handleIclockCdata'])->name('biometric.iclock.registry');
-Route::match(['get', 'post'], '/iclock/ping', [BiometricAttendanceApiController::class, 'handleIclockGetRequest'])->name('biometric.iclock.ping');
+// Direct Biometric Machine Push Routes (Realtime RS-9W / RS09W / ZKTeco ADMS / FKWeb)
+$biometricPushBypass = [
+    \App\Http\Middleware\CheckInstallation::class,
+    \App\Http\Middleware\HandleAppearance::class,
+    \App\Http\Middleware\ShareGlobalSettings::class,
+    \App\Http\Middleware\HandleInertiaRequests::class,
+    \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
+    \App\Http\Middleware\DemoModeMiddleware::class,
+];
+
+Route::withoutMiddleware($biometricPushBypass)->group(function () {
+    Route::post('/', [BiometricAttendanceApiController::class, 'handle'])->name('biometric.root.push');
+    Route::match(['get', 'post'], '/index.php', [BiometricAttendanceApiController::class, 'handle']);
+    Route::match(['get', 'post'], '/hdata.aspx', [BiometricAttendanceApiController::class, 'handleFkWebPush'])->name('biometric.fkweb.push');
+    Route::match(['get', 'post'], '/hdata', [BiometricAttendanceApiController::class, 'handleFkWebPush'])->name('biometric.fkweb.push.short');
+    Route::match(['get', 'post'], '/iclock/cdata', [BiometricAttendanceApiController::class, 'handleIclockCdata'])->name('biometric.iclock.cdata');
+    Route::match(['get', 'post'], '/iclock/cdata.aspx', [BiometricAttendanceApiController::class, 'handleIclockCdata'])->name('biometric.iclock.cdata.aspx');
+    Route::match(['get', 'post'], '/iclock/getrequest', [BiometricAttendanceApiController::class, 'handleIclockGetRequest'])->name('biometric.iclock.getrequest');
+    Route::match(['get', 'post'], '/iclock/getrequest.aspx', [BiometricAttendanceApiController::class, 'handleIclockGetRequest'])->name('biometric.iclock.getrequest.aspx');
+    Route::match(['get', 'post'], '/iclock/devicecmd', [BiometricAttendanceApiController::class, 'handleIclockDeviceCmd'])->name('biometric.iclock.devicecmd');
+    Route::match(['get', 'post'], '/iclock/devicecmd.aspx', [BiometricAttendanceApiController::class, 'handleIclockDeviceCmd'])->name('biometric.iclock.devicecmd.aspx');
+    Route::match(['get', 'post'], '/iclock/registry', [BiometricAttendanceApiController::class, 'handleIclockCdata'])->name('biometric.iclock.registry');
+    Route::match(['get', 'post'], '/iclock/ping', [BiometricAttendanceApiController::class, 'handleIclockGetRequest'])->name('biometric.iclock.ping');
+    Route::match(['get', 'post'], '/cdata', [BiometricAttendanceApiController::class, 'handleIclockCdata'])->name('biometric.cdata');
+    Route::match(['get', 'post'], '/getrequest', [BiometricAttendanceApiController::class, 'handleIclockGetRequest'])->name('biometric.getrequest');
+    Route::match(['get', 'post'], '/devicecmd', [BiometricAttendanceApiController::class, 'handleIclockDeviceCmd'])->name('biometric.devicecmd');
+});
 
 // Public form submission routes
 

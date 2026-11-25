@@ -127,7 +127,13 @@ abstract class AbstractProvider implements BiometricDeviceInterface
 
     public function testConnection(): ConnectivityResult
     {
-        return $this->connectivity->check($this->device, static::definition()->communication === ProviderDefinition::PUSH);
+        $definition = static::definition();
+
+        return $this->connectivity->check(
+            $this->device,
+            $definition->communication !== ProviderDefinition::SIMULATED,
+            $definition->defaultPort,
+        );
     }
 
     public function getDeviceStatus(): DeviceStatus

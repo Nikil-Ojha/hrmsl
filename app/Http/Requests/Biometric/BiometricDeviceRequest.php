@@ -36,7 +36,7 @@ class BiometricDeviceRequest extends FormRequest
         $this->merge([
             'serial_number' => $trim($this->serial_number),
             'device_identifier' => $trim($this->device_identifier) ?: null,
-            'ip_address' => $trim($this->ip_address) ?: null,
+            'ip_address' => $this->normalizeIp($trim($this->ip_address)),
             'port' => $this->port === '' ? null : $this->port,
             'branch_id' => in_array($this->branch_id, ['', '_none_', null], true) ? null : $this->branch_id,
             'department_id' => in_array($this->department_id, ['', '_none_', null], true) ? null : $this->department_id,
@@ -44,6 +44,33 @@ class BiometricDeviceRequest extends FormRequest
             'timezone' => $trim($this->timezone) ?: null,
             'is_active' => filter_var($this->input('is_active', true), FILTER_VALIDATE_BOOLEAN),
         ]);
+    }
+
+    /**
+     * Normalize zero-padded IPv4 addresses shown on biometric device screens
+     * (e.g. "192.168.001.224" -> "192.168.1.224") while still rejecting invalid octets.
+     */
+    private function normalizeIp(mixed $value): ?string
+    {
+        if (!is_string($value) || $value === '') {
+            return null;
+        }
+
+        if (preg_match('/^\d{1,3}(\.\d{1,3}){3}$/', $value)) {
+            $octets = explode('.', $value);
+            $normalized = [];
+            foreach ($octets as $octet) {
+                $intVal = (int) ltrim($octet, '0');
+                if ($intVal > 255) {
+                    return $value; // Let Laravel's 'ip' rule report invalid IP
+                }
+                $normalized[] = (string) $intVal;
+            }
+
+            return implode('.', $normalized);
+        }
+
+        return $value;
     }
 
     public function rules(): array

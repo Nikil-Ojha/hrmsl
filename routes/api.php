@@ -124,6 +124,7 @@ Route::prefix('biometric/device/v1')
     ->middleware(['biometric.device', 'throttle:120,1'])
     ->name('api.biometric.device.')
     ->group(function () {
+        Route::post('heartbeat', [BiometricDevicePushApiController::class, 'heartbeat'])->name('heartbeat');
         Route::post('punches', [BiometricDevicePushApiController::class, 'pushPunches'])->name('punches');
         Route::get('commands', [BiometricDevicePushApiController::class, 'pollCommands'])->name('commands');
         Route::post('commands/{wireId}/ack', [BiometricDevicePushApiController::class, 'acknowledgeCommand'])->whereNumber('wireId')->name('commands.ack');

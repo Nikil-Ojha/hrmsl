@@ -23,6 +23,7 @@ use App\Biometric\Support\Tenant;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Biometric\BiometricDeviceRequest;
 use App\Models\BiometricAgent;
+use App\Models\BiometricAttendanceLog;
 use App\Models\BiometricCommand;
 use App\Models\BiometricDevice;
 use App\Models\BiometricDeviceEvent;
@@ -129,6 +130,28 @@ class BiometricDeviceController extends Controller
             $device->device_identifier = $data['device_identifier'] ?? $this->generateIdentifier((int) $device->company_id);
             $device->credentials = $this->mergeCredentials(null, $data['credentials'] ?? []);
             $device->connection_status = ConnectionStatus::Unknown;
+
+            // If this serial number was already pushing logs before registration, hydrate last contact.
+            $latestLog = BiometricAttendanceLog::where('device_sn', $device->serial_number)
+                ->where(function ($q) use ($device) {
+                    $q->where('company_id', $device->company_id)
+                        ->orWhere(function ($legacy) use ($device) {
+                            $legacy->whereNull('company_id')
+                                ->where('created_by', $device->company_id);
+                        });
+                })
+                ->max('created_at');
+
+            if ($latestLog) {
+                $seenAt = \Illuminate\Support\Carbon::parse($latestLog);
+                $device->last_seen_at = $seenAt;
+                $device->last_log_received_at = $seenAt;
+                $threshold = (int) config('biometric.connectivity.online_threshold_seconds', 300);
+                if ($seenAt->gt(now()->subSeconds($threshold))) {
+                    $device->connection_status = ConnectionStatus::Online;
+                }
+            }
+
             $device->save();
 
             $this->activity->event($device, EventLevel::Info, 'created', 'Device registered by ' . $user->name . '.');

@@ -25,6 +25,41 @@ class BiometricDevicePushApiController extends Controller
     }
 
     /**
+     * Lightweight heartbeat endpoint for Own Brand / Native devices to report online status.
+     */
+    public function heartbeat(Request $request): JsonResponse
+    {
+        /** @var BiometricDevice $device */
+        $device = $request->attributes->get('biometric_device');
+
+        $validated = $request->validate([
+            'firmware_version' => ['nullable', 'string', 'max:100'],
+            'device_info' => ['nullable', 'array'],
+        ]);
+
+        $this->activity->heartbeat($device, $request->ip(), array_filter([
+            'firmware_version' => $validated['firmware_version'] ?? null,
+        ]));
+
+        if (!empty($validated['device_info'])) {
+            $device->forceFill([
+                'device_info' => array_merge($device->device_info ?? [], $validated['device_info']),
+                'device_info_updated_at' => now(),
+            ])->saveQuietly();
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Heartbeat recorded.',
+            'data' => [
+                'device_id' => $device->id,
+                'connection_status' => 'online',
+                'server_time_utc' => now('UTC')->toIso8601String(),
+            ],
+        ]);
+    }
+
+    /**
      * Ingest single or batched attendance events from an authenticated device.
      */
     public function pushPunches(Request $request): JsonResponse

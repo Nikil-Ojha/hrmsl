@@ -427,7 +427,7 @@ export function BiometricEnrollmentTab({
               <Label>{t('Biometric Device')} <span className="text-red-500">*</span></Label>
               <Select value={selectedDeviceId} onValueChange={onDevicePick}>
                 <SelectTrigger><SelectValue placeholder={t('Select device...')} /></SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[60000]">
                   {data.available_devices.map((d) => (
                     <SelectItem key={d.id} value={String(d.id)}>
                       {d.name} ({d.device_type_label}) {d.branch ? `— ${d.branch}` : ''}
@@ -442,7 +442,7 @@ export function BiometricEnrollmentTab({
                 <Label>{t('Biometric Method')} <span className="text-red-500">*</span></Label>
                 <Select value={modality} onValueChange={setModality}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[60000]">
                     {(selectedDevice?.supported_modalities ?? []).map((m) => (
                       <SelectItem key={m.value} value={m.value}>{t(m.label)}</SelectItem>
                     ))}
@@ -489,7 +489,7 @@ export function BiometricEnrollmentTab({
               <Label>{t('Biometric Method')}</Label>
               <Select value={reModality} onValueChange={setReModality}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[60000]">
                   {(reEnrollTarget?.supported_modalities ?? []).map((m) => (
                     <SelectItem key={m.value} value={m.value}>{t(m.label)}</SelectItem>
                   ))}
@@ -532,7 +532,7 @@ export function BiometricEnrollmentTab({
                 <Label>{t('Source Device (optional)')}</Label>
                 <Select value={sourceDeviceId} onValueChange={setSourceDeviceId}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[60000]">
                     <SelectItem value="_auto_">{t('Auto (all enrolled credentials)')}</SelectItem>
                     {activeEnrollments.map((e) => (
                       <SelectItem key={e.device_id} value={String(e.device_id)}>{e.device_name} ({e.device_serial})</SelectItem>

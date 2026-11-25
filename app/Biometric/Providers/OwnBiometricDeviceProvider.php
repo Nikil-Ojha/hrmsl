@@ -36,8 +36,13 @@ class OwnBiometricDeviceProvider extends AbstractPushProvider
 
     public function setupHints(): array
     {
+        $base = rtrim((string) config('app.url'), '/') . '/api/biometric/device/v1';
+
         return [
-            ['label' => 'Server URL (enabled with the protocol gateway release)', 'value' => rtrim((string) config('app.url'), '/') . '/biometric/native/v1'],
+            ['label' => 'Base Push API URL', 'value' => $base],
+            ['label' => 'Heartbeat Endpoint', 'value' => 'POST ' . $base . '/heartbeat'],
+            ['label' => 'Punch Push Endpoint', 'value' => 'POST ' . $base . '/punches'],
+            ['label' => 'Command Poll Endpoint', 'value' => 'GET ' . $base . '/commands'],
             ['label' => 'Device Identifier', 'value' => $this->device->device_identifier],
             ['label' => 'Serial Number', 'value' => $this->device->serial_number],
         ];

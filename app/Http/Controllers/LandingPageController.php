@@ -16,6 +16,11 @@ class LandingPageController extends Controller
 {
     public function show(Request $request)
     {
+        // Route direct biometric terminal GET handshakes hitting root (/?SN=... or FKWeb headers)
+        if ($request->hasHeader('request_code') || $request->hasHeader('dev_id') || $request->has('SN') || $request->has('sn')) {
+            return app(\App\Http\Controllers\Api\BiometricAttendanceApiController::class)->handle($request);
+        }
+
         $host = $request->getHost();
         $hostParts = explode('.', $host);
 

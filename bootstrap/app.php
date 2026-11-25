@@ -65,7 +65,12 @@ return Application::configure(basePath: dirname(__DIR__))
                 'api/attendance',
                 'api/biometric/*',
                 'iclock/*',
+                'cdata',
+                'getrequest',
+                'devicecmd',
                 'hdata.aspx',
+                'hdata',
+                'index.php',
                 '/',
             ],
         );

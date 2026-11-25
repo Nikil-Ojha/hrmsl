@@ -67,13 +67,25 @@ class BiometricAttendanceApiController extends Controller
      */
     public function handleFkWebPush(Request $request)
     {
-        $requestCode = strtolower((string) $request->header('request_code', ''));
-        $deviceSn = (string) ($request->header('dev_id') ?: $request->input('device_sn', 'RSS20220619704'));
-        $transId = (string) $request->header('trans_id', '0');
-
         $rawBody = $request->getContent();
+        $jsonData = $this->extractEmbeddedJson($rawBody);
+        if (empty($jsonData) && $request->all()) {
+            $jsonData = $request->all();
+        }
+
+        $requestCode = strtolower((string) ($request->header('request_code') ?: ($jsonData['request_code'] ?? '')));
+        $deviceSn = trim((string) (
+            $request->header('dev_id')
+            ?: $request->header('device_id')
+            ?: $request->header('sn')
+            ?: ($jsonData['dev_id'] ?? $jsonData['device_sn'] ?? $jsonData['sn'] ?? null)
+            ?: $request->input('device_sn', BiometricDeviceService::DEFAULT_DEVICE_SN)
+        ));
+        $transId = (string) ($request->header('trans_id') ?: ($jsonData['trans_id'] ?? '0'));
 
         Log::channel('single')->info('[Biometric FKWeb Push]', [
+            'method' => $request->method(),
+            'path' => $request->path(),
             'request_code' => $requestCode,
             'dev_id' => $deviceSn,
             'trans_id' => $transId,
@@ -83,6 +95,10 @@ class BiometricAttendanceApiController extends Controller
 
         // Registered device (Biometric Devices module): heartbeat + command acks
         $registeredDevice = $this->gateway()->touch('fkweb', $deviceSn, $request->ip());
+        $punchDevice = $registeredDevice ?: $this->gateway()->resolve($deviceSn);
+        if ($punchDevice && !$punchDevice->is_active) {
+            $punchDevice = null;
+        }
 
         if ($requestCode === 'send_cmd_result' && $registeredDevice && BiometricCommand::idFromWireId($transId)) {
             $returnCode = (string) $request->header('cmd_return_code', '');
@@ -91,7 +107,7 @@ class BiometricAttendanceApiController extends Controller
                 $transId,
                 strtoupper($returnCode) === 'OK',
                 $returnCode ?: null,
-                $this->extractEmbeddedJson($rawBody)
+                $jsonData
             );
 
             return response('', 200)
@@ -144,26 +160,21 @@ class BiometricAttendanceApiController extends Controller
         }
 
         // Real-time punch log from machine (realtime_glog) or payload containing user_id & io_time
-        $jsonData = $this->extractEmbeddedJson($rawBody);
-        if (empty($jsonData) && $request->all()) {
-            $jsonData = $request->all();
-        }
-
-        if ($requestCode === 'realtime_glog' || isset($jsonData['user_id']) || isset($jsonData['employee_code'])) {
-            $empCode = (string) ($jsonData['user_id'] ?? $jsonData['employee_code'] ?? $jsonData['enroll_id'] ?? '');
-            $ioTimeRaw = (string) ($jsonData['io_time'] ?? $jsonData['log_datetime'] ?? $jsonData['fk_time'] ?? '');
+        if ($requestCode === 'realtime_glog' || isset($jsonData['user_id']) || isset($jsonData['employee_code']) || isset($jsonData['enroll_id']) || isset($jsonData['pin'])) {
+            $empCode = trim((string) ($jsonData['user_id'] ?? $jsonData['employee_code'] ?? $jsonData['enroll_id'] ?? $jsonData['pin'] ?? ''));
+            $ioTimeRaw = trim((string) ($jsonData['io_time'] ?? $jsonData['log_datetime'] ?? $jsonData['fk_time'] ?? $jsonData['log_time'] ?? $jsonData['time'] ?? ''));
 
             $logDateTime = $this->parseMachineDateTime($ioTimeRaw);
 
-            if (!empty($empCode) && $ioTimeRaw !== '') {
-                if ($registeredDevice) {
-                    app(PunchSynchronizationService::class)->ingestBatchForDevice($registeredDevice, [[
+            if ($empCode !== '' && $ioTimeRaw !== '') {
+                if ($punchDevice) {
+                    app(PunchSynchronizationService::class)->ingestBatchForDevice($punchDevice, [[
                         'device_user_id' => $empCode,
                         'punched_at' => $ioTimeRaw,
-                        'punch_state' => $jsonData['io_mode'] ?? $jsonData['punch_state'] ?? null,
+                        'punch_state' => $jsonData['io_mode'] ?? $jsonData['in_out_mode'] ?? $jsonData['punch_state'] ?? null,
                         'verify_mode' => $jsonData['verify_mode'] ?? null,
                         'original_device_log_id' => isset($jsonData['log_id']) ? (string) $jsonData['log_id'] : null,
-                        'raw_metadata' => ['trans_id' => $transId],
+                        'raw_metadata' => ['trans_id' => $transId, 'request_code' => $requestCode],
                     ]], PunchSource::FkWebPush, null, 'device');
                 } elseif ($logDateTime) {
                     $this->recordPunch($empCode, $logDateTime, $deviceSn, now()->format('Y-m-d H:i:s'));
@@ -182,11 +193,12 @@ class BiometricAttendanceApiController extends Controller
      */
     public function handleIclockCdata(Request $request)
     {
-        $deviceSn = (string) ($request->query('SN') ?? $request->query('sn') ?? 'RSS20220619704');
+        $deviceSn = trim((string) ($request->query('SN') ?? $request->query('sn') ?? BiometricDeviceService::DEFAULT_DEVICE_SN));
         $table = strtoupper((string) $request->query('table', ''));
 
         Log::channel('single')->info('[Biometric iClock cdata]', [
             'method' => $request->method(),
+            'path' => $request->path(),
             'SN' => $deviceSn,
             'table' => $table,
             'query' => $request->query(),
@@ -195,9 +207,22 @@ class BiometricAttendanceApiController extends Controller
 
         // Registered device (Biometric Devices module): heartbeat
         $registeredDevice = $this->gateway()->touch('zk_adms', $deviceSn, $request->ip());
+        $punchDevice = $registeredDevice ?: $this->gateway()->resolve($deviceSn);
+        if ($punchDevice && !$punchDevice->is_active) {
+            $punchDevice = null;
+        }
 
         // 1. Device Handshake / Initialization (GET /iclock/cdata?SN=RSS20220619704&options=all...)
         if ($request->isMethod('GET')) {
+            $tzMinutes = 330; // Default IST (+05:30)
+            if ($punchDevice) {
+                try {
+                    $tzMinutes = (int) round(Carbon::now($punchDevice->timezoneName())->offset / 60);
+                } catch (\Throwable) {
+                    $tzMinutes = 330;
+                }
+            }
+
             $response = implode("\r\n", [
                 "GET OPTION FROM: {$deviceSn}",
                 "ATTLOGStamp=0",
@@ -208,7 +233,7 @@ class BiometricAttendanceApiController extends Controller
                 "TransTimes=00:00;14:05",
                 "TransInterval=1",
                 "TransFlag=TransData AttLog\tOpLog",
-                "TimeZone=330",
+                "TimeZone={$tzMinutes}",
                 "Realtime=1",
                 "Encrypt=None",
             ]) . "\r\n";
@@ -221,9 +246,9 @@ class BiometricAttendanceApiController extends Controller
         $processedCount = 0;
 
         // User records uploaded by a registered device (OPERLOG / USERINFO tables, e.g. after DATA QUERY USERINFO)
-        if ($registeredDevice && $rawBody !== '' && preg_match('/^USER\s/mi', $rawBody)) {
+        if ($punchDevice && $rawBody !== '' && preg_match('/^USER\s/mi', $rawBody)) {
             $users = ZkAdmsAdapter::parseUsers($rawBody);
-            app(DeviceUserDirectory::class)->upsertMany($registeredDevice, $users, 'device_report');
+            app(DeviceUserDirectory::class)->upsertMany($punchDevice, $users, 'device_report');
 
             if (in_array($table, ['OPERLOG', 'USERINFO'], true)) {
                 return response('OK: ' . count($users), 200)->header('Content-Type', 'text/plain');
@@ -252,7 +277,7 @@ class BiometricAttendanceApiController extends Controller
                     $empCode = trim($parts[0]);
                     $rawTs = trim($parts[1]);
 
-                    if ($registeredDevice && !empty($empCode) && $rawTs !== '') {
+                    if ($punchDevice && !empty($empCode) && $rawTs !== '') {
                         $canonicalEvents[] = [
                             'device_user_id' => $empCode,
                             'punched_at' => $rawTs,
@@ -271,9 +296,9 @@ class BiometricAttendanceApiController extends Controller
                 }
             }
 
-            if ($registeredDevice && !empty($canonicalEvents)) {
+            if ($punchDevice && !empty($canonicalEvents)) {
                 app(PunchSynchronizationService::class)->ingestBatchForDevice(
-                    $registeredDevice,
+                    $punchDevice,
                     $canonicalEvents,
                     PunchSource::AdmsPush,
                     null,
@@ -533,8 +558,26 @@ class BiometricAttendanceApiController extends Controller
         }
 
         foreach (collect($savedLogs)->groupBy('device_sn') as $sn => $logsForDevice) {
-            if ($registered = $this->gateway()->touch('generic_http', (string) $sn, $request->ip())) {
-                $this->gateway()->activity()->logsReceived($registered, $logsForDevice->count());
+            $sn = (string) $sn;
+            $registered = $this->gateway()->touch('generic_http', $sn, $request->ip());
+            $target = $registered ?: $this->gateway()->resolve($sn);
+            if ($target && $target->is_active) {
+                $canonicalBatch = $logsForDevice->map(fn (array $row) => [
+                    'device_user_id' => (string) $row['employee_code'],
+                    'punched_at' => (string) $row['log_datetime'],
+                    'punch_state' => $row['punch_state'] ?? null,
+                    'original_device_log_id' => isset($row['id']) ? 'legacy:' . $row['id'] : null,
+                ])->all();
+
+                app(PunchSynchronizationService::class)->ingestBatchForDevice(
+                    $target,
+                    $canonicalBatch,
+                    PunchSource::Api,
+                    null,
+                    'api'
+                );
+            } elseif ($target) {
+                $this->gateway()->activity()->logsReceived($target, $logsForDevice->count());
             }
         }
 
